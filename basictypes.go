@@ -10,8 +10,3 @@ type Objective struct {
 }
 
 type Projection func(x Vec)
-
-type Problem struct {
-	Obj  Objective
-	Proj Projection
-}
