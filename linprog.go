@@ -2,6 +2,7 @@ package opt
 
 import . "github.com/dane-unltd/linalg/matrix"
 
+//TODO: Predictor-Corrector Interior Point implementation
 func linprog(c Vec, A *Dense, b Vec) {
 	m, n := A.Size()
 
