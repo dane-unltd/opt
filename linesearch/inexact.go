@@ -1,41 +1,45 @@
 package linesearch
 
 //Inexact line search using Armijo's rule.
-func Inexact(obj func(float64) float64, f0, g0, s float64) (float64, float64) {
+type InexactSolver struct {
+}
+
+func (s InexactSolver) Solve(obj, grad Siso, f0, g0, xStart float64) (xNew float64, fNew float64) {
 	beta := 0.5
 
-	f := obj(s)
+	xNew = xStart
+	fNew = obj(xNew)
 
-	if f-f0 > 0.5*g0*s {
-		fPrev := f
-		s *= beta
+	if fNew-f0 > 0.5*g0*xNew {
+		fPrev := fNew
+		xNew *= beta
 		for {
-			f = obj(s)
-			if f-f0 <= 0.5*g0*s {
-				if fPrev < f {
-					s /= beta
-					f = fPrev
+			fNew = obj(xNew)
+			if fNew-f0 <= 0.5*g0*xNew {
+				if fPrev < fNew {
+					xNew /= beta
+					fNew = fPrev
 				}
 				break
 			}
-			fPrev = f
-			s *= beta
+			fPrev = fNew
+			xNew *= beta
 		}
 	} else {
-		fPrev := f
-		s /= beta
+		fPrev := fNew
+		xNew /= beta
 		for {
-			f = obj(s)
-			if f-f0 > 0.5*g0*s {
-				if fPrev < f {
-					s *= beta
-					f = fPrev
+			fNew = obj(xNew)
+			if fNew-f0 > 0.5*g0*xNew {
+				if fPrev < fNew {
+					xNew *= beta
+					fNew = fPrev
 				}
 				break
 			}
-			fPrev = f
-			s /= beta
+			fPrev = fNew
+			xNew /= beta
 		}
 	}
-	return s, f
+	return
 }

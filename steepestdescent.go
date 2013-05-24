@@ -5,17 +5,15 @@ import (
 	"github.com/dane-unltd/opt/linesearch"
 )
 
-type Method int
+type SteepestDescentSolver struct {
+	Tol        float64
+	IterMax    int
+	LineSearch linesearch.Solver
+}
 
-const (
-	Exact Method = iota
-	Inexact
-)
-
-func SteepestDescent(obj Objective, x matrix.Vec,
-	zeta float64, nIter int, m Method) (float64, int) {
+func (sd SteepestDescentSolver) Solve(obj Miso, grad Mimo, x matrix.Vec) Result {
 	s := 1.0
-	f := obj.F(x)
+	f := obj(x)
 	d := matrix.NewVec(len(x))
 	gLin := 0.0
 
@@ -24,27 +22,30 @@ func SteepestDescent(obj Objective, x matrix.Vec,
 	lineFun := func(s float64) float64 {
 		xTemp.Copy(x)
 		xTemp.Axpy(s, d)
-		return obj.F(xTemp)
+		return obj(xTemp)
 	}
 	i := 0
-	for ; i < nIter; i++ {
-		obj.G(x, d)
+	for ; i < sd.IterMax; i++ {
+		grad(x, d)
 		d.Scal(-1)
 
 		gLin = -d.Nrm2Sq()
 
-		if gLin/float64(len(x)) > -zeta {
+		if gLin/float64(len(x)) > -sd.Tol {
 			break
 		}
 
-		if m == Inexact {
-			s, f = linesearch.Inexact(lineFun, f, gLin, s)
-		} else if m == Exact {
-			s, f = linesearch.Exact(lineFun, f, s, 0.1*s)
-		} else {
-			panic("unknown line search method")
-		}
+		s, f = sd.LineSearch.Solve(lineFun, nil, f, gLin, s)
+
 		x.Axpy(s, d)
 	}
-	return f, i
+	res := Result{
+		Obj:  f,
+		Iter: i,
+		Grad: d.Scal(-1),
+	}
+	if i == sd.IterMax {
+		res.Status = MaxIter
+	}
+	return res
 }

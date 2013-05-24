@@ -1,59 +1,64 @@
 package linesearch
 
 //Exact line search for strictly quasi-convex functions
-func Exact(obj func(float64) float64, f0, sNew, zeta float64) (float64, float64) {
-	s1 := 0.0
+type ExactSolver struct {
+	Tol float64
+}
+
+func (s ExactSolver) Solve(obj, grad Siso, f0, g0, xStart float64) (xNew float64, fNew float64) {
+	x1 := 0.0
 	f1 := f0
 
 	f2, f3 := 0.0, 0.0
-	s2, s3 := 0.0, 0.0
+	x2, x3 := 0.0, 0.0
 
-	fNew := obj(sNew)
+	xNew = xStart
+	fNew = obj(xNew)
 
 	if fNew < f1 {
 		f2 = fNew
-		s2 = sNew
+		x2 = xNew
 
-		s3 = 2 * s2
-		f3 = obj(s3)
+		x3 = 2 * x2
+		f3 = obj(x3)
 		for f3 <= f2 {
-			s3 *= 2
-			f3 = obj(s3)
+			x3 *= 2
+			f3 = obj(x3)
 
 		}
 	} else {
 		f3 = fNew
-		s3 = sNew
+		x3 = xNew
 
-		s2 = 0.5 * s3
-		f2 = obj(s2)
+		x2 = 0.5 * x3
+		f2 = obj(x2)
 		for f2 >= f1 {
-			s2 *= 0.5
-			f2 = obj(s2)
+			x2 *= 0.5
+			f2 = obj(x2)
 		}
 	}
 
-	for s3-s1 > zeta {
-		sNew = -0.5 * (s3*s3*(f1-f2) + s2*s2*(f3-f1) + s1*s1*(f2-f3)) /
-			(s3*(f2-f1) + s2*(f1-f3) + s1*(f3-f2))
-		fNew = obj(sNew)
-		if sNew > s2 {
+	for x3-x1 > s.Tol*xStart {
+		xNew = -0.5 * (x3*x3*(f1-f2) + x2*x2*(f3-f1) + x1*x1*(f2-f3)) /
+			(x3*(f2-f1) + x2*(f1-f3) + x1*(f3-f2))
+		fNew = obj(xNew)
+		if xNew > x2 {
 			if fNew >= f2 {
-				s3 = sNew
+				x3 = xNew
 			} else {
-				s1 = s2
-				s2 = sNew
+				x1 = x2
+				x2 = xNew
 				f2 = fNew
 			}
 		} else {
 			if fNew >= f2 {
-				s1 = sNew
+				x1 = xNew
 			} else {
-				s3 = s2
-				s2 = sNew
+				x3 = x2
+				x2 = xNew
 				f2 = fNew
 			}
 		}
 	}
-	return sNew, fNew
+	return
 }
