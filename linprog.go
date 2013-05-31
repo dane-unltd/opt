@@ -7,16 +7,16 @@ import (
 )
 
 //TODO: Predictor-Corrector Interior Point implementation
-func linprog(c Vec, A *Dense, b Vec) Vec {
+func linprog(c Vec, A *Dense, b Vec, tol float64) (x, y, s Vec) {
 	m, n := A.Size()
 
 	At := A.TrView()
 
 	var mu, sigma float64
 
-	x := NewVec(n).AddSc(1)
-	s := NewVec(n).AddSc(1)
-	y := NewVec(m)
+	x = NewVec(n).AddSc(1)
+	s = NewVec(n).AddSc(1)
+	y = NewVec(m)
 
 	dx := NewVec(n)
 	ds := NewVec(n)
@@ -50,20 +50,22 @@ func linprog(c Vec, A *Dense, b Vec) Vec {
 
 	alpha := 0.0
 
-	for iter := 0; iter < 50; iter++ {
+	for iter := 0; iter < 10; iter++ {
 
-		rd.Sub(s, c)
-		rd.AddMul(At, y, -1)
+		rd.Sub(c, s)
+		rd.AddMul(At, y, 1)
 		rp.Mul(A, x)
 		rp.Sub(b, rp)
 		rs.MulH(x, s)
 		rs.Neg(rs)
 
-		mu = rs.Asum()
+		mu = rs.Asum() / float64(n)
 
-		fmt.Println("rhs", mu)
-		fmt.Println(rd, rp, rs)
-		fmt.Println("x", x)
+		fmt.Println("conv\n***************", (rd.Asum()+rp.Asum()+rs.Asum())/float64(n))
+
+		if (rd.Asum()+rp.Asum()+rs.Asum())/float64(n) < tol {
+			break
+		}
 
 		//determining left hand side
 		temp.Mul(A, Diag(xdivs.DivH(x, s)))
@@ -73,27 +75,25 @@ func linprog(c Vec, A *Dense, b Vec) Vec {
 		lhs.Chol(triU)
 
 		//right hand side
-		rhs.Neg(rp)
-		rhstemp.DivH(rs, x)
-		rhstemp.Add(rhstemp, rd)
-		rhs.AddMul(temp, rhstemp, 1)
+		nTemp1.DivH(rs, x)
+		rd.Sub(rd, nTemp1)
+
+		rhs.Copy(rp)
+		rhstemp.MulH(rd, xdivs)
+		rhs.AddMul(A, rhstemp, 1)
 
 		//solving for dyAff
 		soli.Trsv(triUt, rhs)
 		dyAff.Trsv(triU, soli)
 
 		//calculating other steps (dxAff, dsAff)
-		dxAff.Mul(At, dyAff)
-		nTemp1.DivH(rs, x)
-		dxAff.Add(dxAff, nTemp1)
-		dxAff.Add(dxAff, rd)
-		dxAff.MulH(dxAff, x)
-		dxAff.DivH(dxAff, s)
+		nTemp1.Mul(At, dyAff)
+		dxAff.Sub(nTemp1, rd)
+		dxAff.MulH(dxAff, xdivs)
 
-		dsAff.DivH(rs, x)
 		nTemp1.MulH(dxAff, s)
-		nTemp1.DivH(nTemp1, x)
-		dsAff.Sub(dsAff, nTemp1)
+		dsAff.Sub(rs, nTemp1)
+		dsAff.DivH(dsAff, x)
 
 		//determining step size
 		alpha = 1.0
@@ -113,6 +113,7 @@ func linprog(c Vec, A *Dense, b Vec) Vec {
 				}
 			}
 		}
+		alpha *= 0.9995
 
 		//calculating duality gap measure for affine case
 		nTemp1.Copy(x)
@@ -124,21 +125,31 @@ func linprog(c Vec, A *Dense, b Vec) Vec {
 		//centering parameter
 		sigma = math.Pow(mu_aff/mu, 3)
 
-		//right hand side for predictor corrector step
-		rhstemp.MulH(dxAff, dsAff)
-		rhstemp.Neg(rhstemp)
-		rhstemp.AddSc(sigma * mu_aff)
-		nTemp1.DivH(rhstemp, s)
-		rhs.Mul(A, nTemp1)
-		rhs.Neg(rhs)
+		fmt.Println("mu", mu_aff, mu, sigma)
 
+		//right hand side for predictor corrector step
+		rs.MulH(dxAff, dsAff)
+		rs.Neg(rs)
+		rs.AddSc(sigma * mu_aff)
+
+		nTemp1.DivH(rs, x)
+		rd.Neg(nTemp1)
+
+		rhstemp.MulH(rd, xdivs)
+		rhs.Mul(A, rhstemp)
+
+		//solving for dyCC
 		soli.Trsv(triUt, rhs)
 		dyCC.Trsv(triU, soli)
-		dxCC.Mul(At, dyCC)
-		dxCC.MulH(dxCC, x).Add(rhstemp, dxCC)
-		dxCC.DivH(dxCC, s)
-		nTemp1.MulH(s, dxCC)
-		dsCC.Sub(rhstemp, nTemp1).DivH(dsCC, x)
+
+		//calculating other steps (dxAff, dsAff)
+		nTemp1.Mul(At, dyCC)
+		dxCC.Sub(nTemp1, rd)
+		dxCC.MulH(dxCC, xdivs)
+
+		nTemp1.MulH(dxCC, s)
+		dsCC.Sub(rs, nTemp1)
+		dsCC.DivH(dsCC, x)
 
 		dx.Add(dxAff, dxCC)
 		dy.Add(dyAff, dyCC)
@@ -161,11 +172,13 @@ func linprog(c Vec, A *Dense, b Vec) Vec {
 				}
 			}
 		}
-		alpha *= 0.995
+		alpha *= 0.9995
+		fmt.Println("a", alpha)
+
 		x.Axpy(alpha, dx)
 		y.Axpy(alpha, dy)
 		s.Axpy(alpha, ds)
 
 	}
-	return x
+	return
 }
