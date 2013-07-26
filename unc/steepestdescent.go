@@ -1,7 +1,7 @@
 package unc
 
 import (
-	"github.com/dane-unltd/linalg/matrix"
+	"github.com/dane-unltd/linalg/mat"
 	"github.com/dane-unltd/opt/linesearch"
 )
 
@@ -11,15 +11,15 @@ type SteepestDescentSolver struct {
 	LineSearch linesearch.Solver
 }
 
-func (sd SteepestDescentSolver) Solve(obj Miso, grad Mimo, x matrix.Vec) Result {
+func (sd SteepestDescentSolver) Solve(obj Miso, grad Mimo, x mat.Vec) Result {
 	s := 1.0
 	fHist := make([]float64, 0)
 	f := obj(x)
 	fHist = append(fHist, f)
-	d := matrix.NewVec(len(x))
+	d := mat.NewVec(len(x))
 	gLin := 0.0
 
-	xTemp := matrix.NewVec(len(x))
+	xTemp := mat.NewVec(len(x))
 
 	lineFun := func(s float64) float64 {
 		xTemp.Copy(x)

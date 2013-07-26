@@ -1,29 +1,29 @@
 package unc
 
 import (
-	"github.com/dane-unltd/linalg/matrix"
+	"github.com/dane-unltd/linalg/mat"
 	"math"
 )
 
 //objective of the form x'*A*x + b'*x + c
-func MakeQuadratic(A *matrix.Dense, b matrix.Vec, c float64) (fun Miso, grad Mimo) {
+func MakeQuadratic(A *mat.Dense, b mat.Vec, c float64) (fun Miso, grad Mimo) {
 	m, n := A.Size()
 	At := A.TrView()
 	if m != n {
 		panic("coeff matrix has to be quadratic")
 	}
-	temp := matrix.NewVec(m)
-	fun = func(x matrix.Vec) float64 {
+	temp := mat.NewVec(m)
+	fun = func(x mat.Vec) float64 {
 		val := 0.0
-		temp.Mul(A, x)
-		val += matrix.Dot(x, temp)
-		val += matrix.Dot(x, b)
+		temp.Apply(A, x)
+		val += mat.Dot(x, temp)
+		val += mat.Dot(x, b)
 		val += c
 		return val
 	}
-	grad = func(x matrix.Vec, g matrix.Vec) {
-		temp.Mul(At, x)
-		g.Mul(A, x)
+	grad = func(x mat.Vec, g mat.Vec) {
+		temp.Apply(At, x)
+		g.Apply(A, x)
 		g.Add(g, temp)
 		g.Add(g, b)
 	}
@@ -31,7 +31,7 @@ func MakeQuadratic(A *matrix.Dense, b matrix.Vec, c float64) (fun Miso, grad Mim
 }
 
 func MakeRosenbrock() (fun Miso, grad Mimo) {
-	fun = func(x matrix.Vec) float64 {
+	fun = func(x mat.Vec) float64 {
 		sum := 0.0
 		for i := 0; i < len(x)-1; i++ {
 			sum += math.Pow(1-x[i], 2) +
@@ -39,7 +39,7 @@ func MakeRosenbrock() (fun Miso, grad Mimo) {
 		}
 		return sum
 	}
-	grad = func(x, g matrix.Vec) {
+	grad = func(x, g mat.Vec) {
 		g[len(x)-1] = 0
 		for i := 0; i < len(x)-1; i++ {
 			g[i] = -1 * 2 * (1 - x[i])

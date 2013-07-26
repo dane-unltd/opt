@@ -1,7 +1,7 @@
 package unc
 
 import (
-	"github.com/dane-unltd/linalg/matrix"
+	"github.com/dane-unltd/linalg/mat"
 	"github.com/dane-unltd/opt/linesearch"
 )
 
@@ -12,7 +12,7 @@ type LBFGSSolver struct {
 	LineSearch linesearch.Solver
 }
 
-func (sol LBFGSSolver) Solve(obj Miso, grad Mimo, x matrix.Vec) Result {
+func (sol LBFGSSolver) Solve(obj Miso, grad Mimo, x mat.Vec) Result {
 	stepSize := 1.0
 	n := len(x)
 
@@ -21,26 +21,26 @@ func (sol LBFGSSolver) Solve(obj Miso, grad Mimo, x matrix.Vec) Result {
 	fHist = append(fHist, f)
 	gLin := 0.0
 
-	S := make([]matrix.Vec, sol.Mem)
-	Y := make([]matrix.Vec, sol.Mem)
+	S := make([]mat.Vec, sol.Mem)
+	Y := make([]mat.Vec, sol.Mem)
 	for i := 0; i < sol.Mem; i++ {
-		S[i] = matrix.NewVec(n)
-		Y[i] = matrix.NewVec(n)
+		S[i] = mat.NewVec(n)
+		Y[i] = mat.NewVec(n)
 	}
 
-	d := matrix.NewVec(n)
-	g := matrix.NewVec(n)
+	d := mat.NewVec(n)
+	g := mat.NewVec(n)
 
-	xOld := matrix.NewVec(n)
-	gOld := matrix.NewVec(n)
-	sNew := matrix.NewVec(n)
-	yNew := matrix.NewVec(n)
+	xOld := mat.NewVec(n)
+	gOld := mat.NewVec(n)
+	sNew := mat.NewVec(n)
+	yNew := mat.NewVec(n)
 
-	alphas := matrix.NewVec(sol.Mem)
-	betas := matrix.NewVec(sol.Mem)
-	rhos := matrix.NewVec(sol.Mem)
+	alphas := mat.NewVec(sol.Mem)
+	betas := mat.NewVec(sol.Mem)
+	rhos := mat.NewVec(sol.Mem)
 
-	xTemp := matrix.NewVec(n)
+	xTemp := mat.NewVec(n)
 	lineFun := func(step float64) float64 {
 		xTemp.Copy(x)
 		xTemp.Axpy(step, d)
@@ -67,20 +67,20 @@ func (sol LBFGSSolver) Solve(obj Miso, grad Mimo, x matrix.Vec) Result {
 			Y[0].Copy(yNew)
 
 			copy(rhos[1:], rhos)
-			rhos[0] = 1 / matrix.Dot(sNew, yNew)
+			rhos[0] = 1 / mat.Dot(sNew, yNew)
 			for i := 0; i < sol.Mem; i++ {
-				alphas[i] = rhos[i] * matrix.Dot(S[i], d)
+				alphas[i] = rhos[i] * mat.Dot(S[i], d)
 				d.Axpy(-alphas[i], Y[i])
 			}
 			for i := sol.Mem - 1; i >= 0; i-- {
-				betas[i] = rhos[i] * matrix.Dot(Y[i], d)
+				betas[i] = rhos[i] * mat.Dot(Y[i], d)
 				d.Axpy(alphas[i]-betas[i], S[i])
 			}
 		}
 
 		d.Scal(-1)
 
-		gLin = matrix.Dot(d, g)
+		gLin = mat.Dot(d, g)
 
 		if gLin/float64(len(x)) > -sol.Tol {
 			break

@@ -2,7 +2,7 @@ package unc
 
 import (
 	"github.com/dane-unltd/linalg/clapack"
-	"github.com/dane-unltd/linalg/matrix"
+	"github.com/dane-unltd/linalg/mat"
 	"github.com/kortschak/cblas"
 )
 
@@ -12,5 +12,5 @@ type matops struct {
 }
 
 func init() {
-	matrix.Register(matops{})
+	mat.Register(matops{})
 }
