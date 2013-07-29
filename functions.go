@@ -1,4 +1,4 @@
-package unc
+package opt
 
 import (
 	"github.com/dane-unltd/linalg/mat"
@@ -7,7 +7,7 @@ import (
 
 //objective of the form x'*A*x + b'*x + c
 func MakeQuadratic(A *mat.Dense, b mat.Vec, c float64) (fun Miso, grad Mimo) {
-	m, n := A.Size()
+	m, n := A.Dims()
 	At := A.TrView()
 	if m != n {
 		panic("coeff matrix has to be quadratic")

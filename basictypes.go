@@ -1,4 +1,4 @@
-package unc
+package opt
 
 import (
 	"github.com/dane-unltd/linalg/mat"

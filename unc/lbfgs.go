@@ -2,6 +2,7 @@ package unc
 
 import (
 	"github.com/dane-unltd/linalg/mat"
+	"github.com/dane-unltd/opt"
 	"github.com/dane-unltd/opt/linesearch"
 )
 
@@ -12,7 +13,7 @@ type LBFGSSolver struct {
 	LineSearch linesearch.Solver
 }
 
-func (sol LBFGSSolver) Solve(obj Miso, grad Mimo, x mat.Vec) Result {
+func (sol LBFGSSolver) Solve(obj opt.Miso, grad opt.Mimo, x mat.Vec) opt.Result {
 	stepSize := 1.0
 	n := len(x)
 
@@ -96,14 +97,14 @@ func (sol LBFGSSolver) Solve(obj Miso, grad Mimo, x mat.Vec) Result {
 
 		x.Axpy(stepSize, d)
 	}
-	res := Result{
+	res := opt.Result{
 		Obj:     f,
 		Iter:    iter,
 		Grad:    g,
 		ObjHist: fHist,
 	}
 	if iter == sol.IterMax {
-		res.Status = MaxIter
+		res.Status = opt.MaxIter
 	}
 	return res
 }

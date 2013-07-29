@@ -1,4 +1,4 @@
-package unc
+package con
 
 import (
 	"github.com/dane-unltd/linalg/mat"
@@ -6,15 +6,16 @@ import (
 	"github.com/dane-unltd/opt/linesearch"
 )
 
-type SteepestDescentSolver struct {
+type ProjGradSolver struct {
 	Tol        float64
 	IterMax    int
 	LineSearch linesearch.Solver
 }
 
-func (sd SteepestDescentSolver) Solve(obj opt.Miso, grad opt.Mimo, x mat.Vec) opt.Result {
+func (sol ProjGradSolver) Solve(obj opt.Miso, grad opt.Mimo, proj opt.Projection, x mat.Vec) opt.Result {
 	s := 1.0
 	fHist := make([]float64, 0)
+	proj(x)
 	f := obj(x)
 	fHist = append(fHist, f)
 	d := mat.NewVec(len(x))
@@ -25,23 +26,31 @@ func (sd SteepestDescentSolver) Solve(obj opt.Miso, grad opt.Mimo, x mat.Vec) op
 	lineFun := func(s float64) float64 {
 		xTemp.Copy(x)
 		xTemp.Axpy(s, d)
+		proj(xTemp)
 		return obj(xTemp)
 	}
 	i := 0
-	for ; i < sd.IterMax; i++ {
+	for ; i < sol.IterMax; i++ {
 		grad(x, d)
 		d.Scal(-1)
 
-		gLin = -d.Nrm2Sq()
+		xTemp.Copy(x)
+		xTemp.Axpy(s/2, d)
+		proj(xTemp)
+		xTemp.Sub(xTemp, x)
+		xTemp.Scal(2 / s)
 
-		if gLin/float64(len(x)) > -sd.Tol {
+		gLin = -xTemp.Nrm2Sq()
+
+		if gLin/float64(len(x)) > -sol.Tol {
 			break
 		}
 
-		s, f = sd.LineSearch.Solve(lineFun, nil, f, gLin, s)
+		s, f = sol.LineSearch.Solve(lineFun, nil, f, gLin, s)
 		fHist = append(fHist, f)
 
 		x.Axpy(s, d)
+		proj(x)
 	}
 	res := opt.Result{
 		Obj:     f,
@@ -49,7 +58,7 @@ func (sd SteepestDescentSolver) Solve(obj opt.Miso, grad opt.Mimo, x mat.Vec) op
 		Grad:    d.Scal(-1),
 		ObjHist: fHist,
 	}
-	if i == sd.IterMax {
+	if i == sol.IterMax {
 		res.Status = opt.MaxIter
 	}
 	return res

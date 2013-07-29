@@ -1,4 +1,4 @@
-package unc
+package con
 
 import (
 	"fmt"
@@ -35,33 +35,29 @@ func TestQuadratic(t *testing.T) {
 
 	c := bTmp.Nrm2Sq()
 	obj, grad := opt.MakeQuadratic(AtA, b, c)
+	proj := func(x mat.Vec) {
+		for i := range x {
+			if x[i] < 0 {
+				x[i] = 0
+			}
+		}
+	}
 
-	solver := SteepestDescentSolver{
+	solver := ProjGradSolver{
 		Tol:        1e-6,
 		IterMax:    5000,
 		LineSearch: linesearch.InexactSolver{},
 	}
 
 	x1 := mat.NewVec(n)
-	res1 := solver.Solve(obj, grad, x1)
+	res1 := solver.Solve(obj, grad, proj, x1)
 	fmt.Println(res1.Obj, res1.Iter, res1.Status)
 
 	solver.LineSearch = linesearch.ExactSolver{Tol: 0.1}
 
 	x2 := mat.NewVec(n)
-	res2 := solver.Solve(obj, grad, x2)
+	res2 := solver.Solve(obj, grad, proj, x2)
 	fmt.Println(res2.Obj, res2.Iter, res2.Status)
-
-	solver2 := LBFGSSolver{
-		Tol:        1e-6,
-		IterMax:    5000,
-		Mem:        5,
-		LineSearch: linesearch.InexactSolver{},
-	}
-
-	x3 := mat.NewVec(n)
-	res3 := solver2.Solve(obj, grad, x3)
-	fmt.Println(res3.Obj, res3.Iter, res3.Status)
 
 	if math.Abs(res1.Obj) > 0.01 {
 		t.Log(res1.Obj)
@@ -70,11 +66,6 @@ func TestQuadratic(t *testing.T) {
 	}
 	if math.Abs(res2.Obj) > 0.01 {
 		t.Log(res2.Obj)
-		t.Log(obj(xStar))
-		t.Fail()
-	}
-	if math.Abs(res3.Obj) > 0.01 {
-		t.Log(res3.Obj)
 		t.Log(obj(xStar))
 		t.Fail()
 	}
@@ -89,8 +80,10 @@ func TestRosenbrock(t *testing.T) {
 	}
 
 	obj, grad := opt.MakeRosenbrock()
+	proj := func(x mat.Vec) {
+	}
 
-	solver := SteepestDescentSolver{
+	solver := ProjGradSolver{
 		Tol:        1e-6,
 		IterMax:    50000,
 		LineSearch: linesearch.InexactSolver{},
@@ -98,25 +91,13 @@ func TestRosenbrock(t *testing.T) {
 
 	x1 := mat.NewVec(n)
 	x1.Copy(xInit)
-	res1 := solver.Solve(obj, grad, x1)
+	res1 := solver.Solve(obj, grad, proj, x1)
 	fmt.Println(res1.Obj, res1.Iter, res1.Status)
 
 	solver.LineSearch = linesearch.ExactSolver{Tol: 0.1}
 
 	x2 := mat.NewVec(n)
 	x2.Copy(xInit)
-	res2 := solver.Solve(obj, grad, x2)
+	res2 := solver.Solve(obj, grad, proj, x2)
 	fmt.Println(res2.Obj, res2.Iter, res2.Status)
-
-	solver2 := LBFGSSolver{
-		Tol:        1e-6,
-		IterMax:    5000,
-		Mem:        5,
-		LineSearch: linesearch.InexactSolver{},
-	}
-
-	x3 := mat.NewVec(n)
-	x3.Copy(xInit)
-	res3 := solver2.Solve(obj, grad, x3)
-	fmt.Println(res3.Obj, res3.Iter, res3.Status)
 }
