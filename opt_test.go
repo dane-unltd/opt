@@ -38,7 +38,7 @@ func init() {
 	rd.AddMul(At, y, 1)
 	rp.Apply(A, x)
 	rp.Sub(b, rp)
-	rs.MulH(x, s)
+	rs.Mul(x, s)
 	rs.Neg(rs)
 	dev := (rd.Asum() + rp.Asum() + rs.Asum()) / float64(n)
 	if dev > tol {
@@ -69,7 +69,7 @@ func TestLinprog(t *testing.T) {
 	rd.AddMul(At, y, -1)
 	rp.Apply(A, x)
 	rp.Sub(b, rp)
-	rs.MulH(x, s)
+	rs.Mul(x, s)
 	rs.Neg(rs)
 	dev := (rd.Asum() + rp.Asum() + rs.Asum()) / float64(n)
 	if dev > tol {
@@ -106,7 +106,7 @@ func BenchmarkLinprog(bench *testing.B) {
 		rd.AddMul(At, y, -1)
 		rp.Apply(A, x)
 		rp.Sub(b, rp)
-		rs.MulH(x, s)
+		rs.Mul(x, s)
 		rs.Neg(rs)
 		dev := (rd.Asum() + rp.Asum() + rs.Asum()) / float64(n)
 		if dev > tol {

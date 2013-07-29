@@ -7,7 +7,7 @@ import (
 
 //TODO: Predictor-Corrector Interior Point implementation
 func linprog(c Vec, A *Dense, b Vec, tol float64) (x, y, s Vec) {
-	m, n := A.Size()
+	m, n := A.Dims()
 
 	At := A.TrView()
 
@@ -53,7 +53,7 @@ func linprog(c Vec, A *Dense, b Vec, tol float64) (x, y, s Vec) {
 		rd.AddMul(At, y, -1)
 		rp.Apply(A, x)
 		rp.Sub(b, rp)
-		rs.MulH(x, s)
+		rs.Mul(x, s)
 		rs.Neg(rs)
 
 		mu = rs.Asum() / float64(n)
@@ -63,7 +63,7 @@ func linprog(c Vec, A *Dense, b Vec, tol float64) (x, y, s Vec) {
 		}
 
 		//determining left hand side
-		temp.ScalCols(A, xdivs.DivH(x, s))
+		temp.ScalCols(A, xdivs.Div(x, s))
 		lhs.Mul(temp, At)
 
 		//factorization
@@ -71,7 +71,7 @@ func linprog(c Vec, A *Dense, b Vec, tol float64) (x, y, s Vec) {
 
 		//right hand side
 		nTemp1.Add(rd, s)
-		nTemp1.MulH(nTemp1, xdivs)
+		nTemp1.Mul(nTemp1, xdivs)
 		rhs.Apply(A, nTemp1)
 		rhs.Add(rhs, rp)
 
@@ -83,9 +83,9 @@ func linprog(c Vec, A *Dense, b Vec, tol float64) (x, y, s Vec) {
 		nTemp1.Apply(At, dyAff)
 		dxAff.Sub(nTemp1, rd)
 		dxAff.Sub(dxAff, s)
-		dxAff.MulH(dxAff, xdivs)
+		dxAff.Mul(dxAff, xdivs)
 
-		dsAff.DivH(dxAff, xdivs)
+		dsAff.Div(dxAff, xdivs)
 		dsAff.Add(dsAff, s)
 		dsAff.Neg(dsAff)
 
@@ -120,11 +120,11 @@ func linprog(c Vec, A *Dense, b Vec, tol float64) (x, y, s Vec) {
 		sigma = math.Pow(mu_aff/mu, 3)
 
 		//right hand side for predictor corrector step
-		rs.MulH(dxAff, dsAff)
+		rs.Mul(dxAff, dsAff)
 		rs.Neg(rs)
 		rs.AddSc(sigma * mu_aff)
 
-		nTemp1.DivH(rs, s)
+		nTemp1.Div(rs, s)
 		nTemp1.Neg(nTemp1)
 
 		rhs.Apply(A, nTemp1)
@@ -135,13 +135,13 @@ func linprog(c Vec, A *Dense, b Vec, tol float64) (x, y, s Vec) {
 
 		//calculating other steps (dxAff, dsAff)
 		nTemp1.Apply(At, dyCC)
-		dxCC.MulH(nTemp1, x)
+		dxCC.Mul(nTemp1, x)
 		dxCC.Add(rs, dxCC)
-		dxCC.DivH(dxCC, s)
+		dxCC.Div(dxCC, s)
 
-		dsCC.MulH(dxCC, s)
+		dsCC.Mul(dxCC, s)
 		dsCC.Sub(rs, dsCC)
-		dsCC.DivH(dsCC, x)
+		dsCC.Div(dsCC, x)
 
 		dx.Add(dxAff, dxCC)
 		dy.Add(dyAff, dyCC)
