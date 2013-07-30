@@ -24,7 +24,7 @@ func TestQuadratic(t *testing.T) {
 	xStar.AddSc(1)
 	A := mat.RandN(n)
 	At := A.TrView()
-	AtA := mat.NewDense(n)
+	AtA := mat.New(n)
 	AtA.Mul(At, A)
 
 	bTmp := mat.NewVec(n)

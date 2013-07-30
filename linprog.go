@@ -34,13 +34,13 @@ func linprog(c Vec, A *Dense, b Vec, tol float64) (x, y, s Vec) {
 	rs := NewVec(n)
 
 	xdivs := NewVec(n)
-	temp := NewDense(m, n)
+	temp := New(m, n)
 
-	lhs := NewDense(m, m)
+	lhs := New(m, m)
 	rhs := NewVec(m)
 	soli := NewVec(m)
 
-	triU := NewDense(m, m)
+	triU := New(m, m)
 	triUt := triU.TrView()
 
 	nTemp1 := NewVec(n)
