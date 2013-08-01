@@ -6,14 +6,14 @@ import (
 	"github.com/dane-unltd/opt/linesearch"
 )
 
-type LBFGSSolver struct {
+type LBFGS struct {
 	Tol        float64
 	IterMax    int
 	Mem        int
 	LineSearch linesearch.Solver
 }
 
-func (sol LBFGSSolver) Solve(obj opt.Miso, grad opt.Mimo, x mat.Vec) opt.Result {
+func (sol LBFGS) Solve(obj opt.Miso, grad opt.Mimo, x mat.Vec) opt.Result {
 	stepSize := 1.0
 	n := len(x)
 
@@ -47,6 +47,8 @@ func (sol LBFGSSolver) Solve(obj opt.Miso, grad opt.Mimo, x mat.Vec) opt.Result 
 		xTemp.Axpy(step, d)
 		return obj(xTemp)
 	}
+
+	m := linesearch.Model{F: lineFun}
 
 	iter := 0
 	for ; iter < sol.IterMax; iter++ {
@@ -87,8 +89,9 @@ func (sol LBFGSSolver) Solve(obj opt.Miso, grad opt.Mimo, x mat.Vec) opt.Result 
 			break
 		}
 
-		stepSize, f = sol.LineSearch.Solve(lineFun, nil, f, gLin,
-			stepSize)
+		m.LBF, m.LBG, m.X = f, gLin, stepSize
+		res, _ := sol.LineSearch.Solve(&m)
+		stepSize, f = res.X, res.F
 
 		xOld.Copy(x)
 		gOld.Copy(g)

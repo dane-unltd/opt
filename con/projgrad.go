@@ -6,13 +6,13 @@ import (
 	"github.com/dane-unltd/opt/linesearch"
 )
 
-type ProjGradSolver struct {
+type ProjGrad struct {
 	Tol        float64
 	IterMax    int
 	LineSearch linesearch.Solver
 }
 
-func (sol ProjGradSolver) Solve(obj opt.Miso, grad opt.Mimo, proj opt.Projection, x mat.Vec) opt.Result {
+func (sol ProjGrad) Solve(obj opt.Miso, grad opt.Mimo, proj opt.Projection, x mat.Vec) opt.Result {
 	s := 1.0
 	fHist := make([]float64, 0)
 	proj(x)
@@ -29,6 +29,9 @@ func (sol ProjGradSolver) Solve(obj opt.Miso, grad opt.Mimo, proj opt.Projection
 		proj(xTemp)
 		return obj(xTemp)
 	}
+
+	m := linesearch.Model{F: lineFun}
+
 	i := 0
 	for ; i < sol.IterMax; i++ {
 		grad(x, d)
@@ -46,8 +49,9 @@ func (sol ProjGradSolver) Solve(obj opt.Miso, grad opt.Mimo, proj opt.Projection
 			break
 		}
 
-		s, f = sol.LineSearch.Solve(lineFun, nil, f, gLin, s)
-		fHist = append(fHist, f)
+		m.LBF, m.LBG, m.X = f, gLin, s
+		res, _ := sol.LineSearch.Solve(&m)
+		s, f = res.X, res.F
 
 		x.Axpy(s, d)
 		proj(x)
