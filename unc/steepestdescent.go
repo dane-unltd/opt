@@ -6,13 +6,13 @@ import (
 	"github.com/dane-unltd/opt/linesearch"
 )
 
-type SteepestDescentSolver struct {
+type SteepestDescent struct {
 	Tol        float64
 	IterMax    int
 	LineSearch linesearch.Solver
 }
 
-func (sd SteepestDescentSolver) Solve(obj opt.Miso, grad opt.Mimo, x mat.Vec) opt.Result {
+func (sd SteepestDescent) Solve(obj opt.Miso, grad opt.Mimo, x mat.Vec) opt.Result {
 	s := 1.0
 	fHist := make([]float64, 0)
 	f := obj(x)
@@ -27,6 +27,9 @@ func (sd SteepestDescentSolver) Solve(obj opt.Miso, grad opt.Mimo, x mat.Vec) op
 		xTemp.Axpy(s, d)
 		return obj(xTemp)
 	}
+
+	m := linesearch.Model{F: lineFun}
+
 	i := 0
 	for ; i < sd.IterMax; i++ {
 		grad(x, d)
@@ -38,7 +41,10 @@ func (sd SteepestDescentSolver) Solve(obj opt.Miso, grad opt.Mimo, x mat.Vec) op
 			break
 		}
 
-		s, f = sd.LineSearch.Solve(lineFun, nil, f, gLin, s)
+		m.LBF, m.LBG, m.X = f, gLin, s
+		res, _ := sd.LineSearch.Solve(&m)
+		s, f = res.X, res.F
+
 		fHist = append(fHist, f)
 
 		x.Axpy(s, d)

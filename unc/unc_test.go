@@ -36,27 +36,27 @@ func TestQuadratic(t *testing.T) {
 	c := bTmp.Nrm2Sq()
 	obj, grad := opt.MakeQuadratic(AtA, b, c)
 
-	solver := SteepestDescentSolver{
+	solver := SteepestDescent{
 		Tol:        1e-6,
 		IterMax:    5000,
-		LineSearch: linesearch.InexactSolver{},
+		LineSearch: linesearch.Armijo{IterMax: 10},
 	}
 
 	x1 := mat.NewVec(n)
 	res1 := solver.Solve(obj, grad, x1)
 	fmt.Println(res1.Obj, res1.Iter, res1.Status)
 
-	solver.LineSearch = linesearch.ExactSolver{Tol: 0.1}
+	solver.LineSearch = linesearch.Quadratic{Tol: 0.1, IterMax: 100}
 
 	x2 := mat.NewVec(n)
 	res2 := solver.Solve(obj, grad, x2)
 	fmt.Println(res2.Obj, res2.Iter, res2.Status)
 
-	solver2 := LBFGSSolver{
+	solver2 := LBFGS{
 		Tol:        1e-6,
 		IterMax:    5000,
 		Mem:        5,
-		LineSearch: linesearch.InexactSolver{},
+		LineSearch: linesearch.Armijo{IterMax: 10},
 	}
 
 	x3 := mat.NewVec(n)
@@ -90,10 +90,10 @@ func TestRosenbrock(t *testing.T) {
 
 	obj, grad := opt.MakeRosenbrock()
 
-	solver := SteepestDescentSolver{
+	solver := SteepestDescent{
 		Tol:        1e-6,
 		IterMax:    50000,
-		LineSearch: linesearch.InexactSolver{},
+		LineSearch: linesearch.Armijo{IterMax: 10},
 	}
 
 	x1 := mat.NewVec(n)
@@ -101,18 +101,18 @@ func TestRosenbrock(t *testing.T) {
 	res1 := solver.Solve(obj, grad, x1)
 	fmt.Println(res1.Obj, res1.Iter, res1.Status)
 
-	solver.LineSearch = linesearch.ExactSolver{Tol: 0.1}
+	solver.LineSearch = linesearch.Quadratic{Tol: 0.1, IterMax: 100}
 
 	x2 := mat.NewVec(n)
 	x2.Copy(xInit)
 	res2 := solver.Solve(obj, grad, x2)
 	fmt.Println(res2.Obj, res2.Iter, res2.Status)
 
-	solver2 := LBFGSSolver{
+	solver2 := LBFGS{
 		Tol:        1e-6,
 		IterMax:    5000,
 		Mem:        5,
-		LineSearch: linesearch.InexactSolver{},
+		LineSearch: linesearch.Armijo{IterMax: 10},
 	}
 
 	x3 := mat.NewVec(n)

@@ -43,17 +43,17 @@ func TestQuadratic(t *testing.T) {
 		}
 	}
 
-	solver := ProjGradSolver{
+	solver := ProjGrad{
 		Tol:        1e-6,
 		IterMax:    5000,
-		LineSearch: linesearch.InexactSolver{},
+		LineSearch: linesearch.Armijo{IterMax: 10},
 	}
 
 	x1 := mat.NewVec(n)
 	res1 := solver.Solve(obj, grad, proj, x1)
 	fmt.Println(res1.Obj, res1.Iter, res1.Status)
 
-	solver.LineSearch = linesearch.ExactSolver{Tol: 0.1}
+	solver.LineSearch = linesearch.Quadratic{Tol: 0.1, IterMax: 100}
 
 	x2 := mat.NewVec(n)
 	res2 := solver.Solve(obj, grad, proj, x2)
@@ -83,10 +83,10 @@ func TestRosenbrock(t *testing.T) {
 	proj := func(x mat.Vec) {
 	}
 
-	solver := ProjGradSolver{
+	solver := ProjGrad{
 		Tol:        1e-6,
 		IterMax:    50000,
-		LineSearch: linesearch.InexactSolver{},
+		LineSearch: linesearch.Armijo{IterMax: 10},
 	}
 
 	x1 := mat.NewVec(n)
@@ -94,7 +94,7 @@ func TestRosenbrock(t *testing.T) {
 	res1 := solver.Solve(obj, grad, proj, x1)
 	fmt.Println(res1.Obj, res1.Iter, res1.Status)
 
-	solver.LineSearch = linesearch.ExactSolver{Tol: 0.1}
+	solver.LineSearch = linesearch.Quadratic{Tol: 0.1, IterMax: 100}
 
 	x2 := mat.NewVec(n)
 	x2.Copy(xInit)
