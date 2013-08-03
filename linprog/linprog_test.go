@@ -1,4 +1,4 @@
-package opt
+package linprog
 
 import (
 	"github.com/dane-unltd/linalg/clapack"
