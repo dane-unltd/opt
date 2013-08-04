@@ -1,21 +1,49 @@
 package linprog
 
 import (
+	"errors"
 	. "github.com/dane-unltd/linalg/mat"
 	"math"
 )
 
-//TODO: Predictor-Corrector Interior Point implementation
-func linprog(c Vec, A *Dense, b Vec, tol float64) (x, y, s Vec) {
+type Model struct {
+	C, B Vec
+	A    *Dense
+
+	X, Y, S Vec
+
+	Iter int
+}
+
+type PredCorr struct {
+	Tol     float64
+	IterMax int
+}
+
+func NewPredCorr() *PredCorr {
+	return &PredCorr{Tol: 1e-10, IterMax: 100}
+}
+
+//Predictor-Corrector Interior Point implementation
+func (sol *PredCorr) Solve(mdl *Model) error {
+	var err error
+
+	A := mdl.A
+	b := mdl.B
+	c := mdl.C
+
 	m, n := A.Dims()
 
 	At := A.TrView()
 
 	var mu, sigma float64
 
-	x = NewVec(n).AddSc(1)
-	s = NewVec(n).AddSc(1)
-	y = NewVec(m)
+	mdl.X = NewVec(n).AddSc(1)
+	mdl.S = NewVec(n).AddSc(1)
+	mdl.Y = NewVec(m)
+	x := mdl.X
+	s := mdl.S
+	y := mdl.Y
 
 	dx := NewVec(n)
 	ds := NewVec(n)
@@ -48,7 +76,8 @@ func linprog(c Vec, A *Dense, b Vec, tol float64) (x, y, s Vec) {
 
 	alpha := 0.0
 
-	for iter := 0; iter < 1000; iter++ {
+	iter := 0
+	for ; iter < sol.IterMax; iter++ {
 		rd.Sub(c, s)
 		rd.AddMul(At, y, -1)
 		rp.Apply(A, x)
@@ -58,7 +87,7 @@ func linprog(c Vec, A *Dense, b Vec, tol float64) (x, y, s Vec) {
 
 		mu = rs.Asum() / float64(n)
 
-		if (rd.Asum()+rp.Asum()+rs.Asum())/float64(n) < tol {
+		if (rd.Asum()+rp.Asum()+rs.Asum())/float64(n) < sol.Tol {
 			break
 		}
 
@@ -169,7 +198,13 @@ func linprog(c Vec, A *Dense, b Vec, tol float64) (x, y, s Vec) {
 		x.Axpy(alpha, dx)
 		y.Axpy(alpha, dy)
 		s.Axpy(alpha, ds)
-
 	}
-	return
+
+	mdl.Iter = iter
+
+	if iter == sol.IterMax {
+		err = errors.New("PredCorr: Maximum number of iterations reached")
+	}
+
+	return err
 }

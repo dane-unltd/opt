@@ -16,60 +16,78 @@ func init() {
 	mat.Register(matops{})
 }
 
-/*func TestLinprog2(t *testing.T) {
-	m := 2
-	n := 4
+func TestLinprog2(t *testing.T) {
+	m := 1
+	n := 5
 	tol := 1e-8
 
-	A := mat.NewFromArray([]float64{1, 5, 2, 6, 3, 7, 4, 8}, true, m, n)
-	At := A.TrView()
-	b := mat.NewVec(m)
-	b.AddSc(5)
-	c := mat.NewVec(n)
-	c.AddSc(-1)
+	a := mat.NewVec(n).AddSc(1)
+	xStar := mat.NewVec(n)
+	xStar[0] = 1
 
-	x, y, s := linprog(c, A, b, tol)
+	mdl := &Model{}
+
+	mdl.A = mat.NewFromArray(a, true, m, n)
+	At := mdl.A.TrView()
+	mdl.B = mat.NewVec(m)
+	mdl.B.AddSc(1)
+	mdl.C = mat.NewVec(n)
+	mdl.C[0] = -1
+
+	sol := NewPredCorr()
+	sol.Solve(mdl)
 
 	rd := mat.NewVec(n)
 	rp := mat.NewVec(m)
 	rs := mat.NewVec(n)
 
-	rd.Sub(c, s)
-	rd.AddMul(At, y, 1)
-	rp.Apply(A, x)
-	rp.Sub(b, rp)
-	rs.Mul(x, s)
+	rd.Sub(mdl.C, mdl.S)
+	rd.AddMul(At, mdl.Y, -1)
+	rp.Apply(mdl.A, mdl.X)
+	rp.Sub(mdl.B, rp)
+	rs.Mul(mdl.X, mdl.S)
 	rs.Neg(rs)
 	dev := (rd.Asum() + rp.Asum() + rs.Asum()) / float64(n)
 	if dev > tol {
-		t.Log(dev)
 		t.Fail()
 	}
-}*/
+
+	temp := mat.NewVec(n)
+	temp.Sub(mdl.X, xStar)
+
+	if temp.Nrm2() > tol {
+		t.Log(mdl.X)
+		t.Fail()
+	}
+}
 
 func TestLinprog(t *testing.T) {
 	m := 5
 	n := 10
 	tol := 1e-8
 
-	A := mat.RandN(m, n)
-	At := A.TrView()
-	b := mat.NewVec(m)
-	c := mat.RandVec(n)
-	xt := mat.RandVec(n)
-	b.Apply(A, xt)
+	mdl := &Model{}
 
-	x, y, s := linprog(c, A, b, tol)
+	mdl.A = mat.RandN(m, n)
+	mdl.C = mat.RandVec(n)
+	mdl.B = mat.NewVec(m)
+	xt := mat.RandVec(n)
+	mdl.B.Apply(mdl.A, xt)
+
+	At := mdl.A.TrView()
+
+	sol := NewPredCorr()
+	sol.Solve(mdl)
 
 	rd := mat.NewVec(n)
 	rp := mat.NewVec(m)
 	rs := mat.NewVec(n)
 
-	rd.Sub(c, s)
-	rd.AddMul(At, y, -1)
-	rp.Apply(A, x)
-	rp.Sub(b, rp)
-	rs.Mul(x, s)
+	rd.Sub(mdl.C, mdl.S)
+	rd.AddMul(At, mdl.Y, -1)
+	rp.Apply(mdl.A, mdl.X)
+	rp.Sub(mdl.B, rp)
+	rs.Mul(mdl.X, mdl.S)
 	rs.Neg(rs)
 	dev := (rd.Asum() + rp.Asum() + rs.Asum()) / float64(n)
 	if dev > tol {
@@ -79,34 +97,35 @@ func TestLinprog(t *testing.T) {
 }
 
 func BenchmarkLinprog(bench *testing.B) {
-	m := 500
-	n := 1000
+	bench.StopTimer()
+	m := 50
+	n := 100
 	tol := 1e-3
 	rd := mat.NewVec(n)
 	rp := mat.NewVec(m)
 	rs := mat.NewVec(n)
 
-	x := mat.NewVec(n)
-	y := mat.NewVec(m)
-	s := mat.NewVec(n)
 	for i := 0; i < bench.N; i++ {
-		bench.StopTimer()
-		A := mat.RandN(m, n)
-		At := A.TrView()
-		b := mat.NewVec(m)
-		c := mat.RandVec(n)
+		mdl := &Model{}
+
+		mdl.A = mat.RandN(m, n)
+		mdl.C = mat.RandVec(n)
+		mdl.B = mat.NewVec(m)
 		xt := mat.RandVec(n)
-		b.Apply(A, xt)
+		mdl.B.Apply(mdl.A, xt)
 
+		At := mdl.A.TrView()
+
+		sol := NewPredCorr()
 		bench.StartTimer()
-		x, y, s = linprog(c, A, b, tol)
+		sol.Solve(mdl)
 		bench.StopTimer()
 
-		rd.Sub(c, s)
-		rd.AddMul(At, y, -1)
-		rp.Apply(A, x)
-		rp.Sub(b, rp)
-		rs.Mul(x, s)
+		rd.Sub(mdl.C, mdl.S)
+		rd.AddMul(At, mdl.Y, -1)
+		rp.Apply(mdl.A, mdl.X)
+		rp.Sub(mdl.B, rp)
+		rs.Mul(mdl.X, mdl.S)
 		rs.Neg(rs)
 		dev := (rd.Asum() + rp.Asum() + rs.Asum()) / float64(n)
 		if dev > tol {

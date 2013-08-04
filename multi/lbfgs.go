@@ -1,25 +1,51 @@
-package unc
+package multi
 
 import (
+	"errors"
 	"github.com/dane-unltd/linalg/mat"
-	"github.com/dane-unltd/opt"
-	"github.com/dane-unltd/opt/linesearch"
+	"github.com/dane-unltd/opt/uni"
+	"math"
+	"time"
 )
 
 type LBFGS struct {
 	Tol        float64
 	IterMax    int
+	TimeMax    time.Duration
 	Mem        int
-	LineSearch linesearch.Solver
+	LineSearch uni.Solver
 }
 
-func (sol LBFGS) Solve(obj opt.Miso, grad opt.Mimo, x mat.Vec) opt.Result {
+func NewLBFGS() *LBFGS {
+	s := &LBFGS{
+		Tol:        1e-6,
+		IterMax:    1000,
+		TimeMax:    time.Minute,
+		Mem:        5,
+		LineSearch: uni.NewQuadratic(),
+	}
+	return s
+}
+
+func (sol LBFGS) Solve(m *Model) error {
+	var err error
+
+	startT := time.Now()
+
 	stepSize := 1.0
+	x := m.X
 	n := len(x)
 
-	fHist := make([]float64, 0)
-	f := obj(x)
-	fHist = append(fHist, f)
+	if math.IsNaN(m.ObjX) {
+		m.ObjX = m.Obj(x)
+	}
+
+	if m.GradX == nil {
+		m.GradX = mat.NewVec(n)
+		m.Grad(x, m.GradX)
+	}
+	g := m.GradX
+
 	gLin := 0.0
 
 	S := make([]mat.Vec, sol.Mem)
@@ -30,7 +56,6 @@ func (sol LBFGS) Solve(obj opt.Miso, grad opt.Mimo, x mat.Vec) opt.Result {
 	}
 
 	d := mat.NewVec(n)
-	g := mat.NewVec(n)
 
 	xOld := mat.NewVec(n)
 	gOld := mat.NewVec(n)
@@ -45,17 +70,13 @@ func (sol LBFGS) Solve(obj opt.Miso, grad opt.Mimo, x mat.Vec) opt.Result {
 	lineFun := func(step float64) float64 {
 		xTemp.Copy(x)
 		xTemp.Axpy(step, d)
-		return obj(xTemp)
+		return m.Obj(xTemp)
 	}
 
-	m := linesearch.Model{F: lineFun}
+	for ; m.Iter < sol.IterMax; m.Iter++ {
 
-	iter := 0
-	for ; iter < sol.IterMax; iter++ {
-		grad(x, g)
 		d.Copy(g)
-
-		if iter > 0 {
+		if m.Iter > 0 {
 			yNew.Sub(g, gOld)
 			sNew.Sub(x, xOld)
 
@@ -85,29 +106,32 @@ func (sol LBFGS) Solve(obj opt.Miso, grad opt.Mimo, x mat.Vec) opt.Result {
 
 		gLin = mat.Dot(d, g)
 
-		if gLin/float64(len(x)) > -sol.Tol {
+		m.Time = time.Since(startT)
+		if m.callback != nil {
+			m.callback(m)
+		}
+
+		if m.Time > sol.TimeMax {
+			err = errors.New("Time limit reached")
+		}
+		if gLin > -sol.Tol {
 			break
 		}
 
-		m.LBF, m.LBG, m.X = f, gLin, stepSize
-		res, _ := sol.LineSearch.Solve(&m)
-		stepSize, f = res.X, res.F
+		mls := uni.NewModel(lineFun, nil)
+		mls.ObjLB, mls.DerivLB, mls.X = m.ObjX, gLin, stepSize
+		_ = sol.LineSearch.Solve(mls)
+		stepSize, m.ObjX = mls.X, mls.ObjX
 
 		xOld.Copy(x)
 		gOld.Copy(g)
 
-		fHist = append(fHist, f)
-
 		x.Axpy(stepSize, d)
+		m.Grad(x, g)
 	}
-	res := opt.Result{
-		Obj:     f,
-		Iter:    iter,
-		Grad:    g,
-		ObjHist: fHist,
+
+	if m.Iter == sol.IterMax {
+		err = errors.New("Maximum number of iterations reached")
 	}
-	if iter == sol.IterMax {
-		res.Status = opt.MaxIter
-	}
-	return res
+	return err
 }
