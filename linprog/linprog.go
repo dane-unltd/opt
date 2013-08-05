@@ -2,35 +2,30 @@ package linprog
 
 import (
 	"errors"
-	. "github.com/dane-unltd/linalg/mat"
+	"github.com/dane-unltd/linalg/mat"
 	"math"
+	"time"
 )
-
-type Model struct {
-	C, B Vec
-	A    *Dense
-
-	X, Y, S Vec
-
-	Iter int
-}
 
 type PredCorr struct {
 	Tol     float64
 	IterMax int
+	TimeMax time.Duration
 }
 
 func NewPredCorr() *PredCorr {
-	return &PredCorr{Tol: 1e-10, IterMax: 100}
+	return &PredCorr{Tol: 1e-10, IterMax: 100, TimeMax: time.Minute}
 }
 
 //Predictor-Corrector Interior Point implementation
 func (sol *PredCorr) Solve(mdl *Model) error {
 	var err error
 
-	A := mdl.A
-	b := mdl.B
-	c := mdl.C
+	tStart := time.Now()
+
+	A := mdl.a
+	b := mdl.b
+	c := mdl.c
 
 	m, n := A.Dims()
 
@@ -38,46 +33,46 @@ func (sol *PredCorr) Solve(mdl *Model) error {
 
 	var mu, sigma float64
 
-	mdl.X = NewVec(n).AddSc(1)
-	mdl.S = NewVec(n).AddSc(1)
-	mdl.Y = NewVec(m)
-	x := mdl.X
-	s := mdl.S
-	y := mdl.Y
+	mdl.x = mat.NewVec(n).AddSc(1)
+	mdl.s = mat.NewVec(n).AddSc(1)
+	mdl.y = mat.NewVec(m)
+	x := mdl.x
+	s := mdl.s
+	y := mdl.y
 
-	dx := NewVec(n)
-	ds := NewVec(n)
-	dy := NewVec(m)
+	dx := mat.NewVec(n)
+	ds := mat.NewVec(n)
+	dy := mat.NewVec(m)
 
-	dxAff := NewVec(n)
-	dsAff := NewVec(n)
-	dyAff := NewVec(m)
+	dxAff := mat.NewVec(n)
+	dsAff := mat.NewVec(n)
+	dyAff := mat.NewVec(m)
 
-	dxCC := NewVec(n)
-	dsCC := NewVec(n)
-	dyCC := NewVec(m)
+	dxCC := mat.NewVec(n)
+	dsCC := mat.NewVec(n)
+	dyCC := mat.NewVec(m)
 
-	rd := NewVec(n)
-	rp := NewVec(m)
-	rs := NewVec(n)
+	rd := mat.NewVec(n)
+	rp := mat.NewVec(m)
+	rs := mat.NewVec(n)
 
-	xdivs := NewVec(n)
-	temp := New(m, n)
+	xdivs := mat.NewVec(n)
+	temp := mat.New(m, n)
 
-	lhs := New(m, m)
-	rhs := NewVec(m)
-	soli := NewVec(m)
+	lhs := mat.New(m, m)
+	rhs := mat.NewVec(m)
+	soli := mat.NewVec(m)
 
-	triU := New(m, m)
+	triU := mat.New(m, m)
 	triUt := triU.TrView()
 
-	nTemp1 := NewVec(n)
-	nTemp2 := NewVec(n)
+	nTemp1 := mat.NewVec(n)
+	nTemp2 := mat.NewVec(n)
 
 	alpha := 0.0
 
-	iter := 0
-	for ; iter < sol.IterMax; iter++ {
+	mdl.iter = 0
+	for ; mdl.iter < sol.IterMax; mdl.iter++ {
 		rd.Sub(c, s)
 		rd.AddMul(At, y, -1)
 		rp.Apply(A, x)
@@ -143,7 +138,7 @@ func (sol *PredCorr) Solve(mdl *Model) error {
 		nTemp1.Axpy(alpha, dxAff)
 		nTemp2.Copy(s)
 		nTemp2.Axpy(alpha, dsAff)
-		mu_aff := Dot(nTemp1, nTemp2) / float64(n)
+		mu_aff := mat.Dot(nTemp1, nTemp2) / float64(n)
 
 		//centering parameter
 		sigma = math.Pow(mu_aff/mu, 3)
@@ -198,11 +193,15 @@ func (sol *PredCorr) Solve(mdl *Model) error {
 		x.Axpy(alpha, dx)
 		y.Axpy(alpha, dy)
 		s.Axpy(alpha, ds)
+
+		mdl.time = time.Since(tStart)
+		mdl.DoCallbacks()
+		if mdl.time > sol.TimeMax {
+			err = errors.New("linprog: time limit reached")
+		}
 	}
 
-	mdl.Iter = iter
-
-	if iter == sol.IterMax {
+	if mdl.iter == sol.IterMax {
 		err = errors.New("PredCorr: Maximum number of iterations reached")
 	}
 

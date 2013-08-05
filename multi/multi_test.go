@@ -129,7 +129,8 @@ func TestRosenbrock(t *testing.T) {
 	//Here we could plug in something more sophisticated
 	m2.AddCallback(func(m *Model) {
 		if m.Iter()%1000 == 0 {
-			fmt.Println(m.Time(), m.Iter(), m.ObjX())
+			fmt.Printf("%5d   %3.2f    %.2E  %.2E\n", m.Iter(),
+				m.Time().Seconds(), m.ObjX(), m.GradX().Nrm2())
 		}
 	})
 
