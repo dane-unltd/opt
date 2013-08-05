@@ -22,64 +22,59 @@ func (s *Armijo) Solve(m *Model) error {
 
 	beta := 0.5
 
-	if m.UB <= m.LB || math.IsNaN(m.UB) {
-		m.UB = math.Inf(1)
-	}
+	step := m.x - m.lb
+	maxStep := m.ub - m.lb
 
-	step := m.X - m.LB
-	maxStep := m.UB - m.LB
-
-	if math.IsNaN(m.DerivLB) {
-		m.DerivLB = m.Deriv(m.LB)
+	if math.IsNaN(m.derivLB) {
+		m.derivLB = m.deriv(m.lb)
 	}
-	if math.IsNaN(m.ObjLB) {
-		m.ObjLB = m.Obj(m.LB)
+	if math.IsNaN(m.objLB) {
+		m.objLB = m.obj(m.lb)
 	}
 	if math.IsNaN(step) || step <= 0 || step > maxStep {
-		if math.IsInf(m.UB, 1) {
+		if math.IsInf(m.ub, 1) {
 			step = 1
 		} else {
 			step = maxStep
 		}
 	}
 
-	if m.DerivLB > 0 {
-		err = errors.New("No progress possible")
+	if m.derivLB > 0 {
+		err = errors.New("Armijo: No progress possible")
 		return err
 	}
 
-	m.X = m.LB + step
-	m.ObjX = m.Obj(m.X)
+	m.x = m.lb + step
+	m.objX = m.obj(m.x)
 
-	m.Iter = 0
+	m.iter = 0
 
-	if m.ObjX-m.ObjLB > 0.5*m.DerivLB*step {
-		fPrev := m.ObjX
+	if m.objX-m.objLB > 0.5*m.derivLB*step {
+		fPrev := m.objX
 		step *= beta
 		for {
-			m.Iter++
-			if m.Iter == s.IterMax {
+			m.iter++
+			if m.iter == s.IterMax {
 				break
 			}
-			m.X = m.LB + step
-			m.ObjX = m.Obj(m.X)
-			m.Time = time.Since(startT)
-			if m.callback != nil {
-				m.callback(m)
-			}
-			if m.ObjX-m.ObjLB <= 0.5*m.DerivLB*step {
-				if fPrev < m.ObjX {
+			m.x = m.lb + step
+			m.objX = m.obj(m.x)
+			m.time = time.Since(startT)
+			m.DoCallbacks()
+
+			if m.objX-m.objLB <= 0.5*m.derivLB*step {
+				if fPrev < m.objX {
 					step /= beta
-					m.X = m.LB + step
-					m.ObjX = fPrev
+					m.x = m.lb + step
+					m.objX = fPrev
 				}
 				break
 			}
-			fPrev = m.ObjX
+			fPrev = m.objX
 			step *= beta
 		}
 	} else {
-		fPrev := m.ObjX
+		fPrev := m.objX
 		if step == maxStep {
 			goto done
 		}
@@ -88,25 +83,24 @@ func (s *Armijo) Solve(m *Model) error {
 			step = maxStep
 		}
 		for {
-			m.Iter++
-			if m.Iter == s.IterMax {
+			m.iter++
+			if m.iter == s.IterMax {
 				break
 			}
-			m.X = m.LB + step
-			m.ObjX = m.Obj(m.X)
-			m.Time = time.Since(startT)
-			if m.callback != nil {
-				m.callback(m)
-			}
-			if m.ObjX-m.ObjLB > 0.5*m.DerivLB*step {
-				if fPrev < m.ObjX {
+			m.x = m.lb + step
+			m.objX = m.obj(m.x)
+			m.time = time.Since(startT)
+			m.DoCallbacks()
+
+			if m.objX-m.objLB > 0.5*m.derivLB*step {
+				if fPrev < m.objX {
 					step *= beta
-					m.X = m.LB + step
-					m.ObjX = fPrev
+					m.x = m.lb + step
+					m.objX = fPrev
 				}
 				break
 			}
-			fPrev = m.ObjX
+			fPrev = m.objX
 			if step == maxStep {
 				goto done
 			}
@@ -118,7 +112,7 @@ func (s *Armijo) Solve(m *Model) error {
 	}
 
 done:
-	if m.Iter == s.IterMax {
+	if m.iter == s.IterMax {
 		err = errors.New("Maximum number of Iterations reached")
 	}
 

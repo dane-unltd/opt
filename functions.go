@@ -6,7 +6,7 @@ import (
 )
 
 //objective of the form x'*A*x + b'*x + c
-func MakeQuadratic(A *mat.Dense, b mat.Vec, c float64) (fun Miso, grad Mimo) {
+func MakeQuadratic(A *mat.Dense, b mat.Vec, c float64) (fun func(mat.Vec) float64, grad func(mat.Vec, mat.Vec)) {
 	m, n := A.Dims()
 	At := A.TrView()
 	if m != n {
@@ -30,7 +30,7 @@ func MakeQuadratic(A *mat.Dense, b mat.Vec, c float64) (fun Miso, grad Mimo) {
 	return
 }
 
-func MakeRosenbrock() (fun Miso, grad Mimo) {
+func MakeRosenbrock() (fun func(mat.Vec) float64, grad func(mat.Vec, mat.Vec)) {
 	fun = func(x mat.Vec) float64 {
 		sum := 0.0
 		for i := 0; i < len(x)-1; i++ {

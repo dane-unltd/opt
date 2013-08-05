@@ -34,50 +34,48 @@ func (sol *ProjGrad) Solve(m *Model) error {
 
 	s := 1.0 //initial step size
 
-	x := m.X
-	m.Proj(x)
-	n := len(x)
-
-	if math.IsNaN(m.ObjX) {
-		m.ObjX = m.Obj(x)
+	if m.x == nil {
+		m.x = mat.NewVec(m.n)
 	}
-	if m.GradX == nil {
-		m.GradX = mat.NewVec(n)
-	}
-	g := m.GradX
-	m.Grad(x, g)
+	m.proj(m.x)
 
-	d := mat.NewVec(n)
-	d.Copy(g)
+	if math.IsNaN(m.objX) {
+		m.objX = m.obj(m.x)
+	}
+	if m.gradX == nil {
+		m.gradX = mat.NewVec(m.n)
+	}
+	m.grad(m.x, m.gradX)
+
+	d := mat.NewVec(m.n)
+	d.Copy(m.gradX)
 	d.Scal(-1)
 
-	xTemp := mat.NewVec(n)
+	xTemp := mat.NewVec(m.n)
 
-	xTemp.Copy(x)
+	xTemp.Copy(m.x)
 	xTemp.Axpy(s/2, d)
-	m.Proj(xTemp)
-	xTemp.Sub(xTemp, x)
+	m.proj(xTemp)
+	xTemp.Sub(xTemp, m.x)
 	xTemp.Scal(2 / s)
 
 	gLin := -xTemp.Nrm2Sq()
 	gLin0 := gLin
 
 	lineFun := func(s float64) float64 {
-		xTemp.Copy(x)
+		xTemp.Copy(m.x)
 		xTemp.Axpy(s, d)
-		m.Proj(xTemp)
-		return m.Obj(xTemp)
+		m.proj(xTemp)
+		return m.obj(xTemp)
 	}
 
 	mls := uni.NewModel(lineFun, nil)
 
-	for ; m.Iter < sol.IterMax; m.Iter++ {
-		m.Time = time.Since(tStart)
-		if m.callback != nil {
-			m.callback(m)
-		}
+	for ; m.iter < sol.IterMax; m.iter++ {
+		m.time = time.Since(tStart)
+		m.DoCallbacks()
 
-		if m.Time > sol.TimeMax {
+		if m.time > sol.TimeMax {
 			err = errors.New("Time limit reached")
 			break
 		}
@@ -87,30 +85,32 @@ func (sol *ProjGrad) Solve(m *Model) error {
 			break
 		}
 
-		mls.ObjLB, mls.DerivLB, mls.X = m.ObjX, gLin, s
+		mls.SetX(s)
+		mls.SetLB(0, m.objX, gLin)
+		mls.SetUB()
 		err := sol.LineSearch.Solve(mls)
 		if err != nil {
 			fmt.Println(err)
 		}
-		s, m.ObjX = mls.X, mls.ObjX
+		s, m.objX = mls.X(), mls.ObjX()
 
-		x.Axpy(s, d)
-		m.Proj(x)
+		m.x.Axpy(s, d)
+		m.proj(m.x)
 
-		m.Grad(x, g)
-		d.Copy(g)
+		m.grad(m.x, m.gradX)
+		d.Copy(m.gradX)
 		d.Scal(-1)
 
-		xTemp.Copy(x)
+		xTemp.Copy(m.x)
 		xTemp.Axpy(s/2, d)
-		m.Proj(xTemp)
-		xTemp.Sub(xTemp, x)
+		m.proj(xTemp)
+		xTemp.Sub(xTemp, m.x)
 		xTemp.Scal(2 / s)
 
 		gLin = -xTemp.Nrm2Sq()
 	}
 
-	if m.Iter == sol.IterMax {
+	if m.iter == sol.IterMax {
 		err = errors.New("Maximum number of iterations reached")
 	}
 	return err

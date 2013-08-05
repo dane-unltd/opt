@@ -1,6 +1,7 @@
 package multi
 
 import (
+	"fmt"
 	"github.com/dane-unltd/linalg/clapack"
 	"github.com/dane-unltd/linalg/mat"
 	"github.com/dane-unltd/opt"
@@ -36,30 +37,31 @@ func TestQuadratic(t *testing.T) {
 
 	obj, grad := opt.MakeQuadratic(AtA, b, c)
 
-	x1 := mat.NewVec(n)
+	m1 := NewModel(n, obj, grad, nil)
 
-	m1 := NewModel(obj, grad, x1)
 	solver := NewSteepestDescent()
 
 	err := solver.Solve(m1)
-	t.Log(m1.ObjX, m1.Iter, err)
+
+	t.Log(m1.ObjX(), m1.Iter(), err)
 
 	solver.LineSearch = uni.NewQuadratic()
 
-	x2 := mat.NewVec(n)
+	m2 := NewModel(n, obj, grad, nil)
 
-	m2 := NewModel(obj, grad, x2)
 	err = solver.Solve(m2)
-	t.Log(m2.ObjX, m2.Iter, err)
+
+	t.Log(m2.ObjX(), m2.Iter(), err)
 
 	solver2 := NewLBFGS()
 
-	x3 := mat.NewVec(n)
-	m3 := NewModel(obj, grad, x3)
-	err = solver2.Solve(m3)
-	t.Log(m3.ObjX, m3.Iter, err)
+	m3 := NewModel(n, obj, grad, nil)
 
-	//constrained problems
+	err = solver2.Solve(m3)
+
+	t.Log(m3.ObjX(), m3.Iter(), err)
+
+	//constrained problems (constraints described as projection)
 	proj := func(x mat.Vec) {
 		for i := range x {
 			if x[i] < 0 {
@@ -67,33 +69,35 @@ func TestQuadratic(t *testing.T) {
 			}
 		}
 	}
-	solver3 := NewProjGrad()
-	x4 := mat.NewVec(n)
-	m4 := NewModel(obj, grad, x4)
-	m4.Proj = proj
-	err = solver3.Solve(m4)
-	t.Log(m4.ObjX, m4.Iter, err)
 
-	if math.Abs(m1.ObjX) > 0.01 {
-		t.Log(m1.ObjX)
+	solver3 := NewProjGrad()
+
+	m4 := NewModel(n, obj, grad, proj)
+
+	err = solver3.Solve(m4)
+
+	t.Log(m4.ObjX(), m4.Iter(), err)
+
+	if math.Abs(m1.ObjX()) > 0.01 {
+		t.Log(m1.ObjX())
 		t.Log(obj(xStar))
 		t.Fail()
 	}
-	if math.Abs(m2.ObjX) > 0.01 {
-		t.Log(m2.ObjX)
+	if math.Abs(m2.ObjX()) > 0.01 {
+		t.Log(m2.ObjX())
 		t.Log(obj(xStar))
 		t.Fail()
 	}
-	if math.Abs(m3.ObjX) > 0.01 {
-		t.Log(m3.ObjX)
+	if math.Abs(m3.ObjX()) > 0.01 {
+		t.Log(m3.ObjX())
 		t.Log(obj(xStar))
 		t.Fail()
 	}
-	/*if math.Abs(m4.ObjX) > 0.01 {
-		t.Log(m4.ObjX)
+	if math.Abs(m4.ObjX()) > 0.01 {
+		t.Log(m4.ObjX())
 		t.Log(obj(xStar))
 		t.Fail()
-	}*/
+	}
 }
 
 func TestRosenbrock(t *testing.T) {
@@ -107,51 +111,49 @@ func TestRosenbrock(t *testing.T) {
 
 	obj, grad := opt.MakeRosenbrock()
 
-	x1 := mat.NewVec(n)
-	x1.Copy(xInit)
-
-	m1 := NewModel(obj, grad, x1)
+	m1 := NewModel(n, obj, grad, nil)
+	m1.SetX(xInit, true)
 	solver := NewSteepestDescent()
 	solver.TolRel = 0
 	solver.IterMax = 100000
 
 	err = solver.Solve(m1)
-	t.Log(m1.ObjX, m1.Iter, err)
+	t.Log(m1.ObjX(), m1.Iter(), err)
 
 	solver.LineSearch = uni.NewQuadratic()
 
-	x2 := mat.NewVec(n)
-	x2.Copy(xInit)
+	m2 := NewModel(n, obj, grad, nil)
+	m2.SetX(xInit, true)
 
-	m2 := NewModel(obj, grad, x2)
-
-	m2.callback = func(m *Model) {
-		//	t.Log(obj)
-	}
+	//Example on how to use callback to display information
+	//Here we could plug in something more sophisticated
+	m2.AddCallback(func(m *Model) {
+		if m.Iter()%1000 == 0 {
+			fmt.Println(m.Time(), m.Iter(), m.ObjX())
+		}
+	})
 
 	err = solver.Solve(m2)
-	t.Log(m2.ObjX, m2.Iter, err)
+	t.Log(m2.ObjX(), m2.Iter(), err)
 
 	solver2 := NewLBFGS()
 
-	x3 := mat.NewVec(n)
-	x3.Copy(xInit)
-
-	m3 := NewModel(obj, grad, x3)
+	m3 := NewModel(n, obj, grad, nil)
+	m3.SetX(xInit, true)
 	err = solver2.Solve(m3)
 	_ = solver2
 	t.Log(m3.ObjX, m3.Iter, err)
 
-	if math.Abs(m1.ObjX) > 0.1 {
-		t.Log(m1.ObjX)
+	if math.Abs(m1.ObjX()) > 0.1 {
+		t.Log(m1.ObjX())
 		t.Fail()
 	}
-	if math.Abs(m2.ObjX) > 0.1 {
-		t.Log(m2.ObjX)
+	if math.Abs(m2.ObjX()) > 0.1 {
+		t.Log(m2.ObjX())
 		t.Fail()
 	}
-	if math.Abs(m3.ObjX) > 0.1 {
-		t.Log(m3.ObjX)
+	if math.Abs(m3.ObjX()) > 0.1 {
+		t.Log(m3.ObjX())
 		t.Fail()
 	}
 }

@@ -7,55 +7,98 @@ import (
 )
 
 type Model struct {
-	Obj     func(x mat.Vec) float64
-	Grad    func(x, g mat.Vec)
-	Hessian func(x mat.Vec, H *mat.Dense)
-	Proj    func(x mat.Vec)
+	n int
 
-	X        mat.Vec
-	ObjX     float64
-	GradX    mat.Vec
-	HessianX *mat.Dense
+	obj     func(x mat.Vec) float64
+	grad    func(x, g mat.Vec)
+	hessian func(x mat.Vec, H *mat.Dense)
+	proj    func(x mat.Vec)
 
-	Iter int
-	Time time.Duration
+	x        mat.Vec
+	objX     float64
+	gradX    mat.Vec
+	hessianX *mat.Dense
 
-	callback func(m *Model)
+	iter int
+	time time.Duration
+
+	callbacks []func(m *Model)
 }
 
-type History struct {
-	T    []time.Duration
-	X    []mat.Vec
-	Obj  []float64
-	Grad []mat.Vec
-}
-
-func NewModel(obj func(mat.Vec) float64, grad func(mat.Vec, mat.Vec), x mat.Vec) *Model {
+func NewModel(n int, obj func(mat.Vec) float64, grad func(mat.Vec, mat.Vec), proj func(mat.Vec)) *Model {
 	m := &Model{}
-	m.Obj = obj
-	m.Grad = grad
-	m.X = x
-	m.ObjX = math.NaN()
+	m.n = n
+	m.obj = obj
+	m.grad = grad
+	m.proj = proj
+	m.objX = math.NaN()
+	m.callbacks = make([]func(m *Model), 0)
 	return m
 }
 
-func (h *History) Update(m *Model) {
-	if h.T != nil {
-		h.T = append(h.T, m.Time)
-	}
-	if h.X != nil {
-		xt := make(mat.Vec, len(m.X))
-		xt.Copy(m.X)
-		h.X = append(h.X, xt)
-	}
-	if h.Grad != nil {
-		if m.GradX != nil {
-			gt := make(mat.Vec, len(m.GradX))
-			gt.Copy(m.GradX)
-			h.Grad = append(h.Grad, gt)
+func (m *Model) SetX(x mat.Vec, cpy bool) {
+	if cpy {
+		if m.x == nil {
+			m.x = make(mat.Vec, m.n)
 		}
+		m.x.Copy(x)
+	} else {
+		m.x = x
 	}
-	if h.Obj != nil {
-		h.Obj = append(h.Obj, m.ObjX)
+	m.objX = math.NaN()
+	m.gradX = nil
+	m.hessianX = nil
+}
+
+func (m *Model) ChangeFun(obj func(mat.Vec) float64, grad func(mat.Vec, mat.Vec), proj func(mat.Vec)) {
+	m.obj = obj
+	m.grad = grad
+	m.proj = proj
+
+	m.objX = math.NaN()
+	m.gradX = nil
+	m.hessianX = nil
+}
+
+func (m *Model) AddVar(x float64) {
+	m.n++
+	m.x = append(m.x, x)
+
+	m.objX = math.NaN()
+	m.gradX = nil
+	m.hessianX = nil
+}
+
+func (m *Model) AddCallback(cb func(m *Model)) {
+	m.callbacks = append(m.callbacks, cb)
+}
+
+func (m *Model) DoCallbacks() {
+	for _, cb := range m.callbacks {
+		cb(m)
 	}
+}
+
+func (m *Model) ClearCallbacks() {
+	m.callbacks = m.callbacks[0:0]
+}
+
+func (m *Model) GradX() mat.Vec {
+	return m.gradX
+}
+
+func (m *Model) X() mat.Vec {
+	return m.x
+}
+
+func (m *Model) ObjX() float64 {
+	return m.objX
+}
+
+func (m *Model) Iter() int {
+	return m.iter
+}
+
+func (m *Model) Time() time.Duration {
+	return m.time
 }
