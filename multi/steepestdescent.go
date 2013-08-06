@@ -2,6 +2,7 @@ package multi
 
 import (
 	"errors"
+	"fmt"
 	"github.com/dane-unltd/linalg/mat"
 	"github.com/dane-unltd/opt/uni"
 	"math"
@@ -13,17 +14,15 @@ type SteepestDescent struct {
 	IterMax        int
 	TimeMax        time.Duration
 	LineSearch     uni.Solver
-	Disp           bool
 }
 
 func NewSteepestDescent() *SteepestDescent {
 	s := &SteepestDescent{
-		TolAbs:     1e-10,
-		TolRel:     1e-10,
+		TolAbs:     1e-3,
+		TolRel:     1e-3,
 		IterMax:    10000,
 		TimeMax:    10 * time.Second,
 		LineSearch: uni.NewArmijo(),
-		Disp:       true,
 	}
 	return s
 }
@@ -80,7 +79,11 @@ func (sol *SteepestDescent) Solve(m *Model) error {
 		mls.SetX(s)
 		mls.SetLB(0, m.ObjX, gLin)
 		mls.SetUB()
-		_ = sol.LineSearch.Solve(mls)
+		err = sol.LineSearch.Solve(mls)
+		if err != nil {
+			fmt.Println(err)
+			break
+		}
 		s, m.ObjX = mls.X, mls.ObjX
 
 		m.X.Axpy(s, d)

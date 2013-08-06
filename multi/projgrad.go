@@ -18,8 +18,8 @@ type ProjGrad struct {
 
 func NewProjGrad() *ProjGrad {
 	s := &ProjGrad{
-		TolAbs:     1e-6,
-		TolRel:     1e-6,
+		TolAbs:     1e-3,
+		TolRel:     1e-3,
 		IterMax:    10000,
 		TimeMax:    10 * time.Second,
 		LineSearch: uni.NewArmijo(),
@@ -88,9 +88,10 @@ func (sol *ProjGrad) Solve(m *Model) error {
 		mls.SetX(s)
 		mls.SetLB(0, m.ObjX, gLin)
 		mls.SetUB()
-		err := sol.LineSearch.Solve(mls)
+		err = sol.LineSearch.Solve(mls)
 		if err != nil {
 			fmt.Println(err)
+			break
 		}
 		s, m.ObjX = mls.X, mls.ObjX
 

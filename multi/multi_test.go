@@ -19,7 +19,7 @@ var cops struct {
 
 func TestQuadratic(t *testing.T) {
 	mat.Register(cops)
-	n := 5
+	n := 100
 	xStar := mat.NewVec(n)
 	xStar.AddSc(1)
 	A := mat.RandN(n)
@@ -38,24 +38,29 @@ func TestQuadratic(t *testing.T) {
 	obj, grad := opt.MakeQuadratic(AtA, b, c)
 
 	m1 := NewModel(n, obj, grad, nil)
+	m1.AddCallback(NewDisplay(n).Update)
 
 	solver := NewSteepestDescent()
+	solver.TolRel = 0
 
 	err := solver.Solve(m1)
 
 	t.Log(m1.ObjX, m1.Iter, err)
 
-	solver.LineSearch = uni.NewQuadratic()
+	solver.LineSearch = uni.NewQuadratic(false)
 
 	m2 := NewModel(n, obj, grad, nil)
+	m2.AddCallback(NewDisplay(n).Update)
 
 	err = solver.Solve(m2)
 
 	t.Log(m2.ObjX, m2.Iter, err)
 
 	solver2 := NewLBFGS()
+	solver2.TolRel = 0
 
 	m3 := NewModel(n, obj, grad, nil)
+	m3.AddCallback(NewDisplay(n / 10).Update)
 
 	err = solver2.Solve(m3)
 
@@ -71,8 +76,10 @@ func TestQuadratic(t *testing.T) {
 	}
 
 	solver3 := NewProjGrad()
+	solver3.TolRel = 0
 
 	m4 := NewModel(n, obj, grad, proj)
+	m4.AddCallback(NewDisplay(n).Update)
 
 	err = solver3.Solve(m4)
 
@@ -101,7 +108,7 @@ func TestQuadratic(t *testing.T) {
 }
 
 func TestRosenbrock(t *testing.T) {
-	n := 6
+	n := 200
 	var err error
 	scale := 10.0
 	xInit := mat.NewVec(n)
@@ -113,6 +120,7 @@ func TestRosenbrock(t *testing.T) {
 
 	m1 := NewModel(n, obj, grad, nil)
 	m1.SetX(xInit, true)
+	m1.AddCallback(NewDisplay(1000).Update)
 	solver := NewSteepestDescent()
 	solver.TolRel = 0
 	solver.IterMax = 100000
@@ -120,7 +128,7 @@ func TestRosenbrock(t *testing.T) {
 	err = solver.Solve(m1)
 	t.Log(m1.ObjX, m1.Iter, err)
 
-	solver.LineSearch = uni.NewQuadratic()
+	solver.LineSearch = uni.NewQuadratic(false)
 
 	m2 := NewModel(n, obj, grad, nil)
 	m2.SetX(xInit, true)
@@ -137,12 +145,20 @@ func TestRosenbrock(t *testing.T) {
 	t.Log(m2.ObjX, m2.Iter, err)
 
 	solver2 := NewLBFGS()
+	solver2.TolRel = 0
 
 	m3 := NewModel(n, obj, grad, nil)
 	m3.SetX(xInit, true)
+	m3.AddCallback(NewDisplay(10).Update)
 	err = solver2.Solve(m3)
-	_ = solver2
 	t.Log(m3.ObjX, m3.Iter, err)
+
+	m4 := NewModel(n, obj, grad, nil)
+	m4.SetX(xInit, true)
+	m4.AddCallback(NewDisplay(10).Update)
+	solver2.LineSearch = uni.NewQuadratic(false)
+	err = solver2.Solve(m4)
+	t.Log(m4.ObjX, m4.Iter, err)
 
 	if math.Abs(m1.ObjX) > 0.1 {
 		t.Log(m1.ObjX)
@@ -154,6 +170,10 @@ func TestRosenbrock(t *testing.T) {
 	}
 	if math.Abs(m3.ObjX) > 0.1 {
 		t.Log(m3.ObjX)
+		t.Fail()
+	}
+	if math.Abs(m4.ObjX) > 0.1 {
+		t.Log(m4.ObjX)
 		t.Fail()
 	}
 }

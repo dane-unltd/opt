@@ -2,6 +2,7 @@ package multi
 
 import (
 	"errors"
+	"fmt"
 	"github.com/dane-unltd/linalg/mat"
 	"github.com/dane-unltd/opt/uni"
 	"math"
@@ -9,16 +10,17 @@ import (
 )
 
 type LBFGS struct {
-	Tol        float64
-	IterMax    int
-	TimeMax    time.Duration
-	Mem        int
-	LineSearch uni.Solver
+	TolAbs, TolRel float64
+	IterMax        int
+	TimeMax        time.Duration
+	Mem            int
+	LineSearch     uni.Solver
 }
 
 func NewLBFGS() *LBFGS {
 	s := &LBFGS{
-		Tol:        1e-6,
+		TolRel:     1e-3,
+		TolAbs:     1e-3,
 		IterMax:    1000,
 		TimeMax:    time.Minute,
 		Mem:        5,
@@ -46,6 +48,9 @@ func (sol LBFGS) Solve(m *Model) error {
 	}
 
 	gLin := 0.0
+
+	normG0 := m.GradX.Nrm2()
+	normG := m.GradX.Nrm2()
 
 	S := make([]mat.Vec, sol.Mem)
 	Y := make([]mat.Vec, sol.Mem)
@@ -113,14 +118,27 @@ func (sol LBFGS) Solve(m *Model) error {
 		if m.Time > sol.TimeMax {
 			err = errors.New("Time limit reached")
 		}
-		if gLin > -sol.Tol {
+		if normG < sol.TolAbs || normG/normG0 < sol.TolRel {
 			break
 		}
 
 		mls.SetX(stepSize)
 		mls.SetLB(0, m.ObjX, gLin)
 		mls.SetUB()
-		_ = sol.LineSearch.Solve(mls)
+		err = sol.LineSearch.Solve(mls)
+		if err != nil {
+			fmt.Println(err)
+			d.Copy(m.GradX)
+			d.Scal(-1)
+			mls.SetX(stepSize)
+			mls.SetLB(0, m.ObjX, -normG)
+			mls.SetUB()
+			err = sol.LineSearch.Solve(mls)
+			if err != nil {
+				fmt.Println(err)
+				break
+			}
+		}
 		stepSize, m.ObjX = mls.X, mls.ObjX
 
 		xOld.Copy(m.X)
@@ -128,6 +146,7 @@ func (sol LBFGS) Solve(m *Model) error {
 
 		m.X.Axpy(stepSize, d)
 		m.Grad(m.X, m.GradX)
+		normG = m.GradX.Nrm2()
 	}
 
 	if m.Iter == sol.IterMax {

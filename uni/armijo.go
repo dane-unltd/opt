@@ -12,7 +12,7 @@ type Armijo struct {
 }
 
 func NewArmijo() *Armijo {
-	return &Armijo{IterMax: 100}
+	return &Armijo{IterMax: 1000}
 }
 
 func (s *Armijo) Solve(m *Model) error {
@@ -113,7 +113,12 @@ func (s *Armijo) Solve(m *Model) error {
 
 done:
 	if m.Iter == s.IterMax {
-		err = errors.New("Maximum number of Iterations reached")
+		err = errors.New("Armijo: Maximum number of Iterations reached")
+	}
+
+	if m.ObjX >= m.ObjLB {
+		println(m.DerivLB, step, maxStep)
+		err = errors.New("Armijo: No progress made")
 	}
 
 	return err
