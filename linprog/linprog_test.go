@@ -1,7 +1,6 @@
 package linprog
 
 import (
-	"fmt"
 	"github.com/dane-unltd/linalg/clapack"
 	"github.com/dane-unltd/linalg/mat"
 	"github.com/kortschak/cblas"
@@ -41,11 +40,11 @@ func TestLinprog2(t *testing.T) {
 	rp := mat.NewVec(m)
 	rs := mat.NewVec(n)
 
-	rd.Sub(c, mdl.S())
-	rd.AddMul(At, mdl.Y(), -1)
-	rp.Apply(A, mdl.X())
+	rd.Sub(c, mdl.S)
+	rd.AddMul(At, mdl.Y, -1)
+	rp.Apply(A, mdl.X)
 	rp.Sub(b, rp)
-	rs.Mul(mdl.X(), mdl.S())
+	rs.Mul(mdl.X, mdl.S)
 	rs.Neg(rs)
 	dev := (rd.Asum() + rp.Asum() + rs.Asum()) / float64(n)
 	if dev > tol {
@@ -53,10 +52,10 @@ func TestLinprog2(t *testing.T) {
 	}
 
 	temp := mat.NewVec(n)
-	temp.Sub(mdl.X(), xStar)
+	temp.Sub(mdl.X, xStar)
 
 	if temp.Nrm2() > tol {
-		t.Log(mdl.X())
+		t.Log(mdl.X)
 		t.Fail()
 	}
 }
@@ -81,27 +80,16 @@ func TestLinprog(t *testing.T) {
 	mdl := NewStandard(c, A, b)
 
 	//Example for printing duality gap and infeasibilities
-	mdl.AddCallback(func(m *Model) {
-		if m.Iter()%2 == 0 {
-			rd.Sub(c, mdl.S())
-			rd.AddMul(At, mdl.Y(), -1)
-			rp.Apply(A, mdl.X())
-			rp.Sub(b, rp)
-			rs.Mul(mdl.X(), mdl.S())
-			rs.Neg(rs)
-			fmt.Printf("%3d   %3.2f    %.2E  %.2E  %.2E\n", m.Iter(),
-				m.Time().Seconds(), rd.Asum(), rp.Asum(), rs.Asum())
-		}
-	})
+	mdl.AddCallback(NewDisplay(2).Update)
 
 	sol := NewPredCorr()
 	sol.Solve(mdl)
 
-	rd.Sub(c, mdl.S())
-	rd.AddMul(At, mdl.Y(), -1)
-	rp.Apply(A, mdl.X())
+	rd.Sub(c, mdl.S)
+	rd.AddMul(At, mdl.Y, -1)
+	rp.Apply(A, mdl.X)
 	rp.Sub(b, rp)
-	rs.Mul(mdl.X(), mdl.S())
+	rs.Mul(mdl.X, mdl.S)
 	rs.Neg(rs)
 
 	dev := (rd.Asum() + rp.Asum() + rs.Asum()) / float64(n)
@@ -135,11 +123,11 @@ func BenchmarkLinprog(bench *testing.B) {
 		sol.Solve(mdl)
 		bench.StopTimer()
 
-		rd.Sub(c, mdl.S())
-		rd.AddMul(At, mdl.Y(), -1)
-		rp.Apply(A, mdl.X())
+		rd.Sub(c, mdl.S)
+		rd.AddMul(At, mdl.Y, -1)
+		rp.Apply(A, mdl.X)
 		rp.Sub(b, rp)
-		rs.Mul(mdl.X(), mdl.S())
+		rs.Mul(mdl.X, mdl.S)
 		rs.Neg(rs)
 
 		dev := (rd.Asum() + rp.Asum() + rs.Asum()) / float64(n)

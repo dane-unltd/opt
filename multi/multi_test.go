@@ -1,7 +1,6 @@
 package multi
 
 import (
-	"fmt"
 	"github.com/dane-unltd/linalg/clapack"
 	"github.com/dane-unltd/linalg/mat"
 	"github.com/dane-unltd/opt"
@@ -10,6 +9,7 @@ import (
 	"math"
 	"math/rand"
 	"testing"
+	"time"
 )
 
 var cops struct {
@@ -43,7 +43,7 @@ func TestQuadratic(t *testing.T) {
 
 	err := solver.Solve(m1)
 
-	t.Log(m1.ObjX(), m1.Iter(), err)
+	t.Log(m1.ObjX, m1.Iter, err)
 
 	solver.LineSearch = uni.NewQuadratic()
 
@@ -51,7 +51,7 @@ func TestQuadratic(t *testing.T) {
 
 	err = solver.Solve(m2)
 
-	t.Log(m2.ObjX(), m2.Iter(), err)
+	t.Log(m2.ObjX, m2.Iter, err)
 
 	solver2 := NewLBFGS()
 
@@ -59,7 +59,7 @@ func TestQuadratic(t *testing.T) {
 
 	err = solver2.Solve(m3)
 
-	t.Log(m3.ObjX(), m3.Iter(), err)
+	t.Log(m3.ObjX, m3.Iter, err)
 
 	//constrained problems (constraints described as projection)
 	proj := func(x mat.Vec) {
@@ -76,25 +76,25 @@ func TestQuadratic(t *testing.T) {
 
 	err = solver3.Solve(m4)
 
-	t.Log(m4.ObjX(), m4.Iter(), err)
+	t.Log(m4.ObjX, m4.Iter, err)
 
-	if math.Abs(m1.ObjX()) > 0.01 {
-		t.Log(m1.ObjX())
+	if math.Abs(m1.ObjX) > 0.01 {
+		t.Log(m1.ObjX)
 		t.Log(obj(xStar))
 		t.Fail()
 	}
-	if math.Abs(m2.ObjX()) > 0.01 {
-		t.Log(m2.ObjX())
+	if math.Abs(m2.ObjX) > 0.01 {
+		t.Log(m2.ObjX)
 		t.Log(obj(xStar))
 		t.Fail()
 	}
-	if math.Abs(m3.ObjX()) > 0.01 {
-		t.Log(m3.ObjX())
+	if math.Abs(m3.ObjX) > 0.01 {
+		t.Log(m3.ObjX)
 		t.Log(obj(xStar))
 		t.Fail()
 	}
-	if math.Abs(m4.ObjX()) > 0.01 {
-		t.Log(m4.ObjX())
+	if math.Abs(m4.ObjX) > 0.01 {
+		t.Log(m4.ObjX)
 		t.Log(obj(xStar))
 		t.Fail()
 	}
@@ -118,24 +118,23 @@ func TestRosenbrock(t *testing.T) {
 	solver.IterMax = 100000
 
 	err = solver.Solve(m1)
-	t.Log(m1.ObjX(), m1.Iter(), err)
+	t.Log(m1.ObjX, m1.Iter, err)
 
 	solver.LineSearch = uni.NewQuadratic()
 
 	m2 := NewModel(n, obj, grad, nil)
 	m2.SetX(xInit, true)
 
-	//Example on how to use callback to display information
+	//Example on how to use a callback to display information
 	//Here we could plug in something more sophisticated
-	m2.AddCallback(func(m *Model) {
-		if m.Iter()%1000 == 0 {
-			fmt.Printf("%5d   %3.2f    %.2E  %.2E\n", m.Iter(),
-				m.Time().Seconds(), m.ObjX(), m.GradX().Nrm2())
-		}
-	})
+	m2.AddCallback(NewDisplay(1000).Update)
+
+	//Registering a history which stores time and objective values
+	hist := History{T: make([]time.Duration, 0), Obj: make([]float64, 0)}
+	m2.AddCallback(hist.Update)
 
 	err = solver.Solve(m2)
-	t.Log(m2.ObjX(), m2.Iter(), err)
+	t.Log(m2.ObjX, m2.Iter, err)
 
 	solver2 := NewLBFGS()
 
@@ -145,16 +144,16 @@ func TestRosenbrock(t *testing.T) {
 	_ = solver2
 	t.Log(m3.ObjX, m3.Iter, err)
 
-	if math.Abs(m1.ObjX()) > 0.1 {
-		t.Log(m1.ObjX())
+	if math.Abs(m1.ObjX) > 0.1 {
+		t.Log(m1.ObjX)
 		t.Fail()
 	}
-	if math.Abs(m2.ObjX()) > 0.1 {
-		t.Log(m2.ObjX())
+	if math.Abs(m2.ObjX) > 0.1 {
+		t.Log(m2.ObjX)
 		t.Fail()
 	}
-	if math.Abs(m3.ObjX()) > 0.1 {
-		t.Log(m3.ObjX())
+	if math.Abs(m3.ObjX) > 0.1 {
+		t.Log(m3.ObjX)
 		t.Fail()
 	}
 }

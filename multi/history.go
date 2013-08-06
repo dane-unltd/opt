@@ -14,21 +14,21 @@ type History struct {
 
 func (h *History) Update(m *Model) {
 	if h.T != nil {
-		h.T = append(h.T, m.time)
+		h.T = append(h.T, m.Time)
 	}
 	if h.X != nil {
-		xt := make(mat.Vec, len(m.x))
-		xt.Copy(m.x)
+		xt := make(mat.Vec, len(m.X))
+		xt.Copy(m.X)
 		h.X = append(h.X, xt)
 	}
 	if h.Grad != nil {
-		if m.gradX != nil {
-			gt := make(mat.Vec, len(m.gradX))
-			gt.Copy(m.gradX)
+		if m.GradX != nil {
+			gt := make(mat.Vec, len(m.GradX))
+			gt.Copy(m.GradX)
 			h.Grad = append(h.Grad, gt)
 		}
 	}
 	if h.Obj != nil {
-		h.Obj = append(h.Obj, m.objX)
+		h.Obj = append(h.Obj, m.ObjX)
 	}
 }

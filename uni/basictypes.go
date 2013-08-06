@@ -9,78 +9,81 @@ type Solver interface {
 	Solve(m *Model) error
 }
 
+//Model for a general univariate optimization problem.
+//Only change the fields directly if you know what you are doing
+//otherwise use the provided methods.
 type Model struct {
-	obj    func(x float64) float64
-	deriv  func(x float64) float64
-	deriv2 func(x float64) float64
+	Obj    func(x float64) float64
+	Deriv  func(x float64) float64
+	Deriv2 func(x float64) float64
 
-	x       float64
-	objX    float64
-	derivX  float64
-	deriv2X float64
+	X       float64
+	ObjX    float64
+	DerivX  float64
+	Deriv2X float64
 
-	lb      float64
-	objLB   float64
-	derivLB float64
+	LB      float64
+	ObjLB   float64
+	DerivLB float64
 
-	ub      float64
-	objUB   float64
-	derivUB float64
+	UB      float64
+	ObjUB   float64
+	DerivUB float64
 
-	iter int
-	time time.Duration
+	Iter int
+	Time time.Duration
 
 	callbacks []func(m *Model)
 }
 
 func NewModel(obj, deriv func(float64) float64) *Model {
 	m := &Model{
-		obj:     obj,
-		deriv:   deriv,
-		x:       math.NaN(),
-		objX:    math.NaN(),
-		derivX:  math.NaN(),
-		deriv2X: math.NaN(),
-		lb:      0,
-		objLB:   math.NaN(),
-		derivLB: math.NaN(),
-		ub:      math.Inf(1),
-		objUB:   math.NaN(),
-		derivUB: math.NaN(),
+		Obj:     obj,
+		Deriv:   deriv,
+		X:       math.NaN(),
+		ObjX:    math.NaN(),
+		DerivX:  math.NaN(),
+		Deriv2X: math.NaN(),
+		LB:      0,
+		ObjLB:   math.NaN(),
+		DerivLB: math.NaN(),
+		UB:      math.Inf(1),
+		ObjUB:   math.NaN(),
+		DerivUB: math.NaN(),
 	}
 	return m
 }
 
 func (m *Model) ChangeFun(obj func(float64) float64, deriv func(float64) float64) {
-	m.obj = obj
-	m.deriv = deriv
+	m.Obj = obj
+	m.Deriv = deriv
 
-	m.objX = math.NaN()
-	m.derivX = math.NaN()
-	m.deriv2X = math.NaN()
+	m.ObjX = math.NaN()
+	m.DerivX = math.NaN()
+	m.Deriv2X = math.NaN()
 
-	m.objLB = math.NaN()
-	m.derivLB = math.NaN()
+	m.ObjLB = math.NaN()
+	m.DerivLB = math.NaN()
 
-	m.objUB = math.NaN()
-	m.derivUB = math.NaN()
+	m.ObjUB = math.NaN()
+	m.DerivUB = math.NaN()
 }
 
 //sets x, objX, derivX, deriv2X, in that order
 func (m *Model) SetX(xs ...float64) {
-	m.x = math.NaN()
-	m.objX = math.NaN()
-	m.derivX = math.NaN()
-	m.deriv2X = math.NaN()
+	m.X = math.NaN()
+	m.ObjX = math.NaN()
+	m.DerivX = math.NaN()
+	m.Deriv2X = math.NaN()
 
 	if len(xs) > 0 {
-		m.x = xs[0]
+		m.X = xs[0]
 		if len(xs) > 1 {
-			m.objX = xs[1]
+			m.ObjX = xs[1]
 			if len(xs) > 2 {
-				m.derivX = xs[2]
+				m.DerivX = xs[2]
 				if len(xs) > 3 {
-					m.deriv2X = xs[3]
+					m.Deriv2X = xs[3]
 				}
 			}
 		}
@@ -89,16 +92,16 @@ func (m *Model) SetX(xs ...float64) {
 
 //sets lb, objLB, derivLB, in that order
 func (m *Model) SetLB(lbs ...float64) {
-	m.lb = 0
-	m.objLB = math.NaN()
-	m.derivLB = math.NaN()
+	m.LB = 0
+	m.ObjLB = math.NaN()
+	m.DerivLB = math.NaN()
 
 	if len(lbs) > 0 {
-		m.lb = lbs[0]
+		m.LB = lbs[0]
 		if len(lbs) > 1 {
-			m.objLB = lbs[1]
+			m.ObjLB = lbs[1]
 			if len(lbs) > 2 {
-				m.derivLB = lbs[2]
+				m.DerivLB = lbs[2]
 			}
 		}
 	}
@@ -106,19 +109,19 @@ func (m *Model) SetLB(lbs ...float64) {
 
 //sets ub, objUB, derivUB, in that order
 func (m *Model) SetUB(ubs ...float64) {
-	m.ub = math.Inf(1)
-	m.objUB = math.NaN()
-	m.derivUB = math.NaN()
+	m.UB = math.Inf(1)
+	m.ObjUB = math.NaN()
+	m.DerivUB = math.NaN()
 
 	if len(ubs) > 0 {
-		m.ub = ubs[0]
-		if m.ub < m.lb {
+		m.UB = ubs[0]
+		if m.UB < m.LB {
 			panic("uni: upperbound has to at least as high as the lower bound")
 		}
 		if len(ubs) > 1 {
-			m.objUB = ubs[1]
+			m.ObjUB = ubs[1]
 			if len(ubs) > 2 {
-				m.derivUB = ubs[2]
+				m.DerivUB = ubs[2]
 			}
 		}
 	}
@@ -136,24 +139,4 @@ func (m *Model) DoCallbacks() {
 
 func (m *Model) ClearCallbacks() {
 	m.callbacks = m.callbacks[0:0]
-}
-
-func (m *Model) DerivX() float64 {
-	return m.derivX
-}
-
-func (m *Model) X() float64 {
-	return m.x
-}
-
-func (m *Model) ObjX() float64 {
-	return m.objX
-}
-
-func (m *Model) Iter() int {
-	return m.iter
-}
-
-func (m *Model) Time() time.Duration {
-	return m.time
 }

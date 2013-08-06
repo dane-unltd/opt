@@ -22,85 +22,85 @@ func (sol *Quadratic) Solve(m *Model) error {
 
 	tStart := time.Now()
 
-	if math.IsNaN(m.objLB) {
-		m.objLB = m.obj(m.lb)
+	if math.IsNaN(m.ObjLB) {
+		m.ObjLB = m.Obj(m.LB)
 	}
 
 	fNew := 0.0
 	xNew := 0.0
 
-	m.iter = 0
+	m.Iter = 0
 
-	if math.IsInf(m.ub, 1) {
-		xNew = m.x
-		fNew = m.objX
+	if math.IsInf(m.UB, 1) {
+		xNew = m.X
+		fNew = m.ObjX
 		if math.IsNaN(xNew) {
 			xNew = 1
-			fNew = m.obj(xNew)
+			fNew = m.Obj(xNew)
 		}
 		if math.IsNaN(fNew) {
-			fNew = m.obj(xNew)
+			fNew = m.Obj(xNew)
 		}
 
-		if fNew < m.objLB {
-			m.objX = fNew
-			m.x = xNew
+		if fNew < m.ObjLB {
+			m.ObjX = fNew
+			m.X = xNew
 
-			m.ub = 2 * m.x
-			m.objUB = m.obj(m.ub)
-			for ; m.iter < sol.IterMax && m.objUB <= m.objX; m.iter++ {
-				m.ub *= 2
-				m.objUB = m.obj(m.ub)
+			m.UB = 2 * m.X
+			m.ObjUB = m.Obj(m.UB)
+			for ; m.Iter < sol.IterMax && m.ObjUB <= m.ObjX; m.Iter++ {
+				m.UB *= 2
+				m.ObjUB = m.Obj(m.UB)
 
-				m.time = time.Since(tStart)
+				m.Time = time.Since(tStart)
 				m.DoCallbacks()
-				if m.time > sol.TimeMax {
+				if m.Time > sol.TimeMax {
 					err = errors.New("Time limit reached")
 					goto done
 				}
 			}
 		} else {
-			m.objUB = fNew
-			m.ub = xNew
+			m.ObjUB = fNew
+			m.UB = xNew
 
-			m.x = 0.5 * m.ub
-			m.objX = m.obj(m.x)
-			for ; m.iter < sol.IterMax && m.objX >= m.objLB; m.iter++ {
-				m.x *= 0.5
-				m.objX = m.obj(m.x)
+			m.X = 0.5 * m.UB
+			m.ObjX = m.Obj(m.X)
+			for ; m.Iter < sol.IterMax && m.ObjX >= m.ObjLB; m.Iter++ {
+				m.X *= 0.5
+				m.ObjX = m.Obj(m.X)
 
-				m.time = time.Since(tStart)
+				m.Time = time.Since(tStart)
 				m.DoCallbacks()
-				if m.time > sol.TimeMax {
+				if m.Time > sol.TimeMax {
 					err = errors.New("Time limit reached")
 					goto done
 				}
 			}
 		}
 	} else {
-		m.ub = m.ub
-		m.objUB = m.objUB
-		if math.IsNaN(m.objUB) {
-			m.objUB = m.obj(m.ub)
+		m.UB = m.UB
+		m.ObjUB = m.ObjUB
+		if math.IsNaN(m.ObjUB) {
+			m.ObjUB = m.Obj(m.UB)
 		}
-		if m.objUB < m.objLB {
-			m.x = m.ub - sol.Tol
-			m.objX = m.obj(m.x)
-			if m.objX >= m.objUB {
-				m.x = m.ub
-				m.objX = m.objUB
+		if m.ObjUB < m.ObjLB {
+			m.X = m.UB - sol.Tol
+			m.ObjX = m.Obj(m.X)
+			if m.ObjX >= m.ObjUB {
+				m.X = m.UB
+				m.ObjX = m.ObjUB
 				goto done
 			}
 		} else {
-			m.x = 0.5 * m.ub
-			m.objX = m.obj(m.x)
-			for ; m.iter < sol.IterMax && m.objX >= m.objLB; m.iter++ {
-				m.x *= 0.5
-				m.objX = m.obj(m.x)
+			m.X = 0.5 * m.UB
+			m.ObjX = m.Obj(m.X)
+			for ; m.Iter < sol.IterMax && m.ObjX >= m.ObjLB; m.Iter++ {
+				m.X *= 0.5
+				m.ObjX = m.Obj(m.X)
 
-				m.time = time.Since(tStart)
+				m.Time = time.Since(tStart)
 				m.DoCallbacks()
-				if m.time > sol.TimeMax {
+				if m.Time > sol.TimeMax {
 					err = errors.New("Time limit reached")
 					goto done
 				}
@@ -108,38 +108,38 @@ func (sol *Quadratic) Solve(m *Model) error {
 		}
 	}
 
-	for ; m.ub-m.lb > sol.Tol && m.iter < sol.IterMax; m.iter++ {
-		xNew = -0.5 * (m.ub*m.ub*(m.objLB-m.objX) + m.x*m.x*(m.objUB-m.objLB) + m.lb*m.lb*(m.objX-m.objUB)) /
-			(m.ub*(m.objX-m.objLB) + m.x*(m.objLB-m.objUB) + m.lb*(m.objUB-m.objX))
-		fNew = m.obj(xNew)
-		if xNew > m.x {
-			if fNew >= m.objX {
-				m.ub = xNew
+	for ; m.UB-m.LB > sol.Tol && m.Iter < sol.IterMax; m.Iter++ {
+		xNew = -0.5 * (m.UB*m.UB*(m.ObjLB-m.ObjX) + m.X*m.X*(m.ObjUB-m.ObjLB) + m.LB*m.LB*(m.ObjX-m.ObjUB)) /
+			(m.UB*(m.ObjX-m.ObjLB) + m.X*(m.ObjLB-m.ObjUB) + m.LB*(m.ObjUB-m.ObjX))
+		fNew = m.Obj(xNew)
+		if xNew > m.X {
+			if fNew >= m.ObjX {
+				m.UB = xNew
 			} else {
-				m.lb = m.x
-				m.x = xNew
-				m.objX = fNew
+				m.LB = m.X
+				m.X = xNew
+				m.ObjX = fNew
 			}
 		} else {
-			if fNew >= m.objX {
-				m.lb = xNew
+			if fNew >= m.ObjX {
+				m.LB = xNew
 			} else {
-				m.ub = m.x
-				m.x = xNew
-				m.objX = fNew
+				m.UB = m.X
+				m.X = xNew
+				m.ObjX = fNew
 			}
 		}
 
-		m.time = time.Since(tStart)
+		m.Time = time.Since(tStart)
 		m.DoCallbacks()
-		if m.time > sol.TimeMax {
+		if m.Time > sol.TimeMax {
 			err = errors.New("Time limit reached")
 			goto done
 		}
 	}
 
 done:
-	if m.iter == sol.IterMax {
+	if m.Iter == sol.IterMax {
 		err = errors.New("Maximum number of Iterations reached")
 	}
 

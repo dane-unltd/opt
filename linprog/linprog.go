@@ -23,9 +23,9 @@ func (sol *PredCorr) Solve(mdl *Model) error {
 
 	tStart := time.Now()
 
-	A := mdl.a
-	b := mdl.b
-	c := mdl.c
+	A := mdl.A
+	b := mdl.B
+	c := mdl.C
 
 	m, n := A.Dims()
 
@@ -33,12 +33,12 @@ func (sol *PredCorr) Solve(mdl *Model) error {
 
 	var mu, sigma float64
 
-	mdl.x = mat.NewVec(n).AddSc(1)
-	mdl.s = mat.NewVec(n).AddSc(1)
-	mdl.y = mat.NewVec(m)
-	x := mdl.x
-	s := mdl.s
-	y := mdl.y
+	mdl.X = mat.NewVec(n).AddSc(1)
+	mdl.S = mat.NewVec(n).AddSc(1)
+	mdl.Y = mat.NewVec(m)
+	x := mdl.X
+	s := mdl.S
+	y := mdl.Y
 
 	dx := mat.NewVec(n)
 	ds := mat.NewVec(n)
@@ -71,8 +71,8 @@ func (sol *PredCorr) Solve(mdl *Model) error {
 
 	alpha := 0.0
 
-	mdl.iter = 0
-	for ; mdl.iter < sol.IterMax; mdl.iter++ {
+	mdl.Iter = 0
+	for ; mdl.Iter < sol.IterMax; mdl.Iter++ {
 		rd.Sub(c, s)
 		rd.AddMul(At, y, -1)
 		rp.Apply(A, x)
@@ -194,14 +194,14 @@ func (sol *PredCorr) Solve(mdl *Model) error {
 		y.Axpy(alpha, dy)
 		s.Axpy(alpha, ds)
 
-		mdl.time = time.Since(tStart)
+		mdl.Time = time.Since(tStart)
 		mdl.DoCallbacks()
-		if mdl.time > sol.TimeMax {
+		if mdl.Time > sol.TimeMax {
 			err = errors.New("linprog: time limit reached")
 		}
 	}
 
-	if mdl.iter == sol.IterMax {
+	if mdl.Iter == sol.IterMax {
 		err = errors.New("PredCorr: Maximum number of iterations reached")
 	}
 

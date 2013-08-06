@@ -6,13 +6,13 @@ import (
 )
 
 type Model struct {
-	c, b mat.Vec
-	a    *mat.Dense
+	C, B mat.Vec
+	A    *mat.Dense
 
-	x, y, s mat.Vec
+	X, Y, S mat.Vec
 
-	iter int
-	time time.Duration
+	Iter int
+	Time time.Duration
 
 	callbacks []func(m *Model)
 }
@@ -23,27 +23,10 @@ func NewStandard(c mat.Vec, A *mat.Dense, b mat.Vec) *Model {
 		panic("linprog: dimension mismatch")
 	}
 	return &Model{
-		c: c,
-		b: b,
-		a: A,
+		C: c,
+		B: b,
+		A: A,
 	}
-}
-
-func (m *Model) X() mat.Vec {
-	return m.x
-}
-func (m *Model) Y() mat.Vec {
-	return m.y
-}
-func (m *Model) S() mat.Vec {
-	return m.s
-}
-
-func (m *Model) Iter() int {
-	return m.iter
-}
-func (m *Model) Time() time.Duration {
-	return m.time
 }
 
 func (m *Model) AddCallback(cb func(m *Model)) {

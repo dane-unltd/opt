@@ -36,38 +36,38 @@ func (sol *SteepestDescent) Solve(m *Model) error {
 
 	s := 1.0 //initial step size
 
-	if m.x == nil {
-		m.x = mat.NewVec(m.n)
+	if m.X == nil {
+		m.X = mat.NewVec(m.N)
 	}
-	if math.IsNaN(m.objX) {
-		m.objX = m.obj(m.x)
+	if math.IsNaN(m.ObjX) {
+		m.ObjX = m.Obj(m.X)
 	}
-	if m.gradX == nil {
-		m.gradX = mat.NewVec(m.n)
+	if m.GradX == nil {
+		m.GradX = mat.NewVec(m.N)
 	}
-	m.grad(m.x, m.gradX)
+	m.Grad(m.X, m.GradX)
 
-	gLin := -m.gradX.Nrm2Sq()
+	gLin := -m.GradX.Nrm2Sq()
 	gLin0 := gLin
 
-	d := mat.NewVec(m.n)
-	d.Copy(m.gradX)
+	d := mat.NewVec(m.N)
+	d.Copy(m.GradX)
 	d.Scal(-1)
 
-	xTemp := mat.NewVec(m.n)
+	xTemp := mat.NewVec(m.N)
 
 	lineFun := func(s float64) float64 {
-		xTemp.Copy(m.x)
+		xTemp.Copy(m.X)
 		xTemp.Axpy(s, d)
-		return m.obj(xTemp)
+		return m.Obj(xTemp)
 	}
 	mls := uni.NewModel(lineFun, nil)
 
-	for ; m.iter < sol.IterMax; m.iter++ {
-		m.time = time.Since(tStart)
+	for ; m.Iter < sol.IterMax; m.Iter++ {
+		m.Time = time.Since(tStart)
 		m.DoCallbacks()
 
-		if m.time > sol.TimeMax {
+		if m.Time > sol.TimeMax {
 			err = errors.New("Time limit reached")
 			break
 		}
@@ -78,21 +78,21 @@ func (sol *SteepestDescent) Solve(m *Model) error {
 		}
 
 		mls.SetX(s)
-		mls.SetLB(0, m.objX, gLin)
+		mls.SetLB(0, m.ObjX, gLin)
 		mls.SetUB()
 		_ = sol.LineSearch.Solve(mls)
-		s, m.objX = mls.X(), mls.ObjX()
+		s, m.ObjX = mls.X, mls.ObjX
 
-		m.x.Axpy(s, d)
+		m.X.Axpy(s, d)
 
-		m.grad(m.x, m.gradX)
-		d.Copy(m.gradX)
+		m.Grad(m.X, m.GradX)
+		d.Copy(m.GradX)
 		d.Scal(-1)
 
 		gLin = -d.Nrm2Sq()
 	}
 
-	if m.iter == sol.IterMax {
+	if m.Iter == sol.IterMax {
 		err = errors.New("Maximum number of iterations reached")
 	}
 	return err

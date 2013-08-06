@@ -22,7 +22,7 @@ func NewLBFGS() *LBFGS {
 		IterMax:    1000,
 		TimeMax:    time.Minute,
 		Mem:        5,
-		LineSearch: uni.NewQuadratic(),
+		LineSearch: uni.NewArmijo(),
 	}
 	return s
 }
@@ -34,15 +34,15 @@ func (sol LBFGS) Solve(m *Model) error {
 
 	stepSize := 1.0
 
-	if m.x == nil {
-		m.x = mat.NewVec(m.n)
+	if m.X == nil {
+		m.X = mat.NewVec(m.N)
 	}
-	if math.IsNaN(m.objX) {
-		m.objX = m.obj(m.x)
+	if math.IsNaN(m.ObjX) {
+		m.ObjX = m.Obj(m.X)
 	}
-	if m.gradX == nil {
-		m.gradX = mat.NewVec(m.n)
-		m.grad(m.x, m.gradX)
+	if m.GradX == nil {
+		m.GradX = mat.NewVec(m.N)
+		m.Grad(m.X, m.GradX)
 	}
 
 	gLin := 0.0
@@ -50,36 +50,36 @@ func (sol LBFGS) Solve(m *Model) error {
 	S := make([]mat.Vec, sol.Mem)
 	Y := make([]mat.Vec, sol.Mem)
 	for i := 0; i < sol.Mem; i++ {
-		S[i] = mat.NewVec(m.n)
-		Y[i] = mat.NewVec(m.n)
+		S[i] = mat.NewVec(m.N)
+		Y[i] = mat.NewVec(m.N)
 	}
 
-	d := mat.NewVec(m.n)
+	d := mat.NewVec(m.N)
 
-	xOld := mat.NewVec(m.n)
-	gOld := mat.NewVec(m.n)
-	sNew := mat.NewVec(m.n)
-	yNew := mat.NewVec(m.n)
+	xOld := mat.NewVec(m.N)
+	gOld := mat.NewVec(m.N)
+	sNew := mat.NewVec(m.N)
+	yNew := mat.NewVec(m.N)
 
 	alphas := mat.NewVec(sol.Mem)
 	betas := mat.NewVec(sol.Mem)
 	rhos := mat.NewVec(sol.Mem)
 
-	xTemp := mat.NewVec(m.n)
+	xTemp := mat.NewVec(m.N)
 
 	lineFun := func(step float64) float64 {
-		xTemp.Copy(m.x)
+		xTemp.Copy(m.X)
 		xTemp.Axpy(step, d)
-		return m.obj(xTemp)
+		return m.Obj(xTemp)
 	}
 	mls := uni.NewModel(lineFun, nil)
 
-	for ; m.iter < sol.IterMax; m.iter++ {
+	for ; m.Iter < sol.IterMax; m.Iter++ {
 
-		d.Copy(m.gradX)
-		if m.iter > 0 {
-			yNew.Sub(m.gradX, gOld)
-			sNew.Sub(m.x, xOld)
+		d.Copy(m.GradX)
+		if m.Iter > 0 {
+			yNew.Sub(m.GradX, gOld)
+			sNew.Sub(m.X, xOld)
 
 			temp := S[len(S)-1]
 			copy(S[1:], S)
@@ -105,12 +105,12 @@ func (sol LBFGS) Solve(m *Model) error {
 
 		d.Scal(-1)
 
-		gLin = mat.Dot(d, m.gradX)
+		gLin = mat.Dot(d, m.GradX)
 
-		m.time = time.Since(startT)
+		m.Time = time.Since(startT)
 		m.DoCallbacks()
 
-		if m.time > sol.TimeMax {
+		if m.Time > sol.TimeMax {
 			err = errors.New("Time limit reached")
 		}
 		if gLin > -sol.Tol {
@@ -118,19 +118,19 @@ func (sol LBFGS) Solve(m *Model) error {
 		}
 
 		mls.SetX(stepSize)
-		mls.SetLB(0, m.objX, gLin)
+		mls.SetLB(0, m.ObjX, gLin)
 		mls.SetUB()
 		_ = sol.LineSearch.Solve(mls)
-		stepSize, m.objX = mls.X(), mls.ObjX()
+		stepSize, m.ObjX = mls.X, mls.ObjX
 
-		xOld.Copy(m.x)
-		gOld.Copy(m.gradX)
+		xOld.Copy(m.X)
+		gOld.Copy(m.GradX)
 
-		m.x.Axpy(stepSize, d)
-		m.grad(m.x, m.gradX)
+		m.X.Axpy(stepSize, d)
+		m.Grad(m.X, m.GradX)
 	}
 
-	if m.iter == sol.IterMax {
+	if m.Iter == sol.IterMax {
 		err = errors.New("Maximum number of iterations reached")
 	}
 	return err
