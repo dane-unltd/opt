@@ -18,24 +18,42 @@ var cops struct {
 	clapack.Lapack
 }
 
-func ExampleModel() {
+func ExampleModel(t *testing.T) {
+	mat.Register(cops)
+
+	//badly conditioned Hessian leads to zig-zagging of the steepest descent
+	//algorithm
+	condNo := 100.0
+
 	obj := func(x mat.Vec) float64 {
-		return 3*math.Pow(x[0]-1, 2) + math.Pow(x[1]-2, 2)
+		return condNo*math.Pow(x[0]-1, 2) + math.Pow(x[1]-2, 2)
 	}
 	grad := func(x, g mat.Vec) {
-		g[0] = 6 * (x[0] - 1)
-		g[1] = 2 * (x[1] - 1)
+		g[0] = condNo * 2 * (x[0] - 1)
+		g[1] = 2 * (x[1] - 2)
 	}
 
+	//Create new 2-dimensional model.
 	mdl := NewModel(2, obj, grad, nil)
-	//Display progress in every second iteration
-	mdl.AddCallback(NewDisplay(2).Update)
 
+	//Register an event handler, that gets called when the model changes,
+	//which is basically in every iteration of the solver.
+	//Here we use the Display type to display progress in every iteration.
+	mdl.AddCallback(NewDisplay(1).Update)
+
+	//Use steepest descent solver to solve the model
 	solver := NewSteepestDescent()
 	solver.Solve(mdl)
 
-	fmt.Println(mdl.X)
-	//should be [1,2]
+	fmt.Println("x =", mdl.X)
+	//should be [1,2], but because of the bad conditioning we made little
+	//progress in the second dimension
+
+	//Use a BFGS solver to refine the result:
+	solver2 := NewLBFGS()
+	solver2.Solve(mdl)
+
+	fmt.Println("x =", mdl.X)
 }
 
 func TestQuadratic(t *testing.T) {

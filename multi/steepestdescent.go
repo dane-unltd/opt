@@ -62,6 +62,7 @@ func (sol *SteepestDescent) Solve(m *Model) error {
 	}
 	mls := uni.NewModel(lineFun, nil)
 
+	m.Iter = 0
 	for ; m.Iter < sol.IterMax; m.Iter++ {
 		m.Time = time.Since(tStart)
 		m.DoCallbacks()
