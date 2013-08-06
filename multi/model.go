@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+//Describes a multi-variate optimization problem.
+//The solvers in this package place the results in the different fields.
 type Model struct {
 	N int
 

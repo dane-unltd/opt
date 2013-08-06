@@ -1,6 +1,7 @@
 package multi
 
 import (
+	"fmt"
 	"github.com/dane-unltd/linalg/clapack"
 	"github.com/dane-unltd/linalg/mat"
 	"github.com/dane-unltd/opt"
@@ -15,6 +16,26 @@ import (
 var cops struct {
 	cblas.Blas
 	clapack.Lapack
+}
+
+func ExampleModel() {
+	obj := func(x mat.Vec) float64 {
+		return 3*math.Pow(x[0]-1, 2) + math.Pow(x[1]-2, 2)
+	}
+	grad := func(x, g mat.Vec) {
+		g[0] = 6 * (x[0] - 1)
+		g[1] = 2 * (x[1] - 1)
+	}
+
+	mdl := NewModel(2, obj, grad, nil)
+	//Display progress in every second iteration
+	mdl.AddCallback(NewDisplay(2).Update)
+
+	solver := NewSteepestDescent()
+	solver.Solve(mdl)
+
+	fmt.Println(mdl.X)
+	//should be [1,2]
 }
 
 func TestQuadratic(t *testing.T) {
