@@ -11,18 +11,23 @@ import (
 type Model struct {
 	N int
 
-	Obj     func(x mat.Vec) float64
-	Grad    func(x, g mat.Vec)
-	Hessian func(x mat.Vec, H *mat.Dense)
-	Proj    func(x mat.Vec)
+	Obj  Function
+	grad Grad
+	hess Hessian
 
-	X        mat.Vec
-	ObjX     float64
-	GradX    mat.Vec
-	HessianX *mat.Dense
+	Proj Projection
+
+	X     mat.Vec
+	ObjX  float64
+	GradX mat.Vec
 
 	Iter int
 	Time time.Duration
+
+	Status Status
+
+	Params Params
+	Solver Solver
 
 	initialGradNorm float64
 	initialTime     time.Time
@@ -31,19 +36,17 @@ type Model struct {
 	oldX    mat.Vec
 	oldObjX float64
 
-	Params Params
-
 	callbacks []func(m *Model) Status
 }
 
-func NewModel(n int, obj func(mat.Vec) float64, grad func(mat.Vec, mat.Vec), proj func(mat.Vec)) *Model {
+func NewModel(n int, obj Function) *Model {
 	m := &Model{}
-	m.N = n
 	m.Obj = obj
-	m.Grad = grad
-	m.Proj = proj
+	m.N = n
 	m.ObjX = math.NaN()
 	m.callbacks = make([]func(m *Model) Status, 0)
+	m.initialGradNorm = math.NaN()
+	m.gradNorm = math.NaN()
 	m.Params = Params{
 		FunTolAbs: 1e-15,
 		FunTolRel: 1e-15,
@@ -67,17 +70,13 @@ func (m *Model) SetX(x mat.Vec, cpy bool) {
 	}
 	m.ObjX = math.NaN()
 	m.GradX = nil
-	m.HessianX = nil
 }
 
-func (m *Model) ChangeFun(obj func(mat.Vec) float64, grad func(mat.Vec, mat.Vec), proj func(mat.Vec)) {
+func (m *Model) Change(obj Function) {
 	m.Obj = obj
-	m.Grad = grad
-	m.Proj = proj
 
 	m.ObjX = math.NaN()
 	m.GradX = nil
-	m.HessianX = nil
 }
 
 func (m *Model) AddVar(x float64) {
@@ -86,7 +85,6 @@ func (m *Model) AddVar(x float64) {
 
 	m.ObjX = math.NaN()
 	m.GradX = nil
-	m.HessianX = nil
 }
 
 func (m *Model) AddCallback(cb func(m *Model) Status) {
@@ -131,16 +129,38 @@ func (m *Model) checkConvergence() Status {
 	return NotTerminated
 }
 
-func (m *Model) init() {
-	m.initialGradNorm = m.GradX.Nrm2()
+func (m *Model) init(useG, useH bool) {
 	m.initialTime = time.Now()
 	m.oldX = mat.NewVec(m.N).Scal(math.NaN())
 	m.Iter = 0
+
+	if m.X == nil {
+		m.X = mat.NewVec(m.N)
+	}
+	if m.Proj != nil {
+		m.Proj.Project(m.X)
+	}
+	if math.IsNaN(m.ObjX) {
+		m.ObjX = m.Obj.Val(m.X)
+	}
+	if useG {
+		m.grad = m.Obj.(Grad)
+		m.GradX = mat.NewVec(m.N)
+		m.grad.ValGrad(m.X, m.GradX)
+		m.initialGradNorm = m.GradX.Nrm2()
+	} else {
+		m.GradX = nil
+	}
+	if useH {
+		m.hess = m.Obj.(Hessian)
+	}
 }
 
 func (m *Model) update() Status {
 	m.Time = time.Since(m.initialTime)
-	m.gradNorm = m.GradX.Nrm2()
+	if m.GradX != nil {
+		m.gradNorm = m.GradX.Nrm2()
+	}
 	if status := m.doCallbacks(); status != 0 {
 		return status
 	}

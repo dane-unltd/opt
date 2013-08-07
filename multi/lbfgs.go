@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/dane-unltd/linalg/mat"
 	"github.com/dane-unltd/opt/uni"
-	"math"
 )
 
 type LBFGS struct {
@@ -20,22 +19,11 @@ func NewLBFGS() *LBFGS {
 	return s
 }
 
-func (sol LBFGS) Solve(m *Model) Status {
-	var status Status
+func (sol LBFGS) Solve(m *Model) {
+
+	m.init(true, false)
 
 	stepSize := 1.0
-
-	if m.X == nil {
-		m.X = mat.NewVec(m.N)
-	}
-	if math.IsNaN(m.ObjX) {
-		m.ObjX = m.Obj(m.X)
-	}
-	if m.GradX == nil {
-		m.GradX = mat.NewVec(m.N)
-		m.Grad(m.X, m.GradX)
-	}
-
 	gLin := 0.0
 
 	S := make([]mat.Vec, sol.Mem)
@@ -61,11 +49,9 @@ func (sol LBFGS) Solve(m *Model) Status {
 	lineFun := func(step float64) float64 {
 		xTemp.Copy(m.X)
 		xTemp.Axpy(step, d)
-		return m.Obj(xTemp)
+		return m.Obj.Val(xTemp)
 	}
 	mls := uni.NewModel(lineFun, nil)
-
-	m.init()
 
 	for {
 
@@ -100,7 +86,7 @@ func (sol LBFGS) Solve(m *Model) Status {
 
 		gLin = mat.Dot(d, m.GradX)
 
-		if status = m.update(); status != 0 {
+		if m.Status = m.update(); m.Status != 0 {
 			break
 		}
 
@@ -109,7 +95,7 @@ func (sol LBFGS) Solve(m *Model) Status {
 		mls.SetUB()
 		lsStatus := sol.LineSearch.Solve(mls)
 		if lsStatus < 0 {
-			fmt.Println("Linesearch:", status)
+			fmt.Println("Linesearch:", lsStatus)
 			d.Copy(m.GradX)
 			d.Scal(-1)
 			mls.SetX(stepSize)
@@ -117,8 +103,8 @@ func (sol LBFGS) Solve(m *Model) Status {
 			mls.SetUB()
 			lsStatus = sol.LineSearch.Solve(mls)
 			if lsStatus < 0 {
-				fmt.Println("Linesearch:", status)
-				status = Status(lsStatus)
+				fmt.Println("Linesearch:", lsStatus)
+				m.Status = Status(lsStatus)
 
 				break
 			}
@@ -129,8 +115,6 @@ func (sol LBFGS) Solve(m *Model) Status {
 		gOld.Copy(m.GradX)
 
 		m.X.Axpy(stepSize, d)
-		m.Grad(m.X, m.GradX)
+		m.grad.ValGrad(m.X, m.GradX)
 	}
-
-	return status
 }

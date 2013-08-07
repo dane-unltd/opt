@@ -104,10 +104,5 @@ func (s *Armijo) Solve(m *Model) Status {
 
 done:
 
-	if m.ObjX >= m.ObjLB {
-		println(m.DerivLB, step, m.ObjX-m.ObjLB, sigma*m.DerivLB*step)
-		status = ObjAbsConv
-	}
-
 	return status
 }
