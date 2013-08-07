@@ -191,3 +191,16 @@ func TestRosenbrock(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestSolve(t *testing.T) {
+	mat.Register(cops)
+
+	xInit := mat.RandVec(10).Scal(10.0)
+
+	mdl := Solve(opt.Rosenbrock{}, xInit)
+
+	if math.Abs(mdl.ObjX) > 0.1 {
+		t.Log(mdl.ObjX)
+		t.Fail()
+	}
+}
