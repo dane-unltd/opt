@@ -14,7 +14,7 @@ type Model struct {
 	Iter int
 	Time time.Duration
 
-	rp, rd, rs mat.Vec
+	Rp, Rd, Rs mat.Vec
 
 	Params Params
 
@@ -60,9 +60,9 @@ func (m *Model) doCallbacks() Status {
 }
 
 func (m *Model) checkConvergence() Status {
-	if m.rd.Asum() < m.Params.Infeasibility &&
-		m.rp.Asum() < m.Params.Infeasibility &&
-		m.rs.Asum() < m.Params.DualityGap {
+	if m.Rd.Asum() < m.Params.Infeasibility &&
+		m.Rp.Asum() < m.Params.Infeasibility &&
+		m.Rs.Asum() < m.Params.DualityGap {
 		return Success
 	}
 
@@ -77,9 +77,9 @@ func (m *Model) checkConvergence() Status {
 
 func (m *Model) init() {
 	rows, cols := m.A.Dims()
-	m.rd = mat.NewVec(cols)
-	m.rp = mat.NewVec(rows)
-	m.rs = mat.NewVec(cols)
+	m.Rd = mat.NewVec(cols)
+	m.Rp = mat.NewVec(rows)
+	m.Rs = mat.NewVec(cols)
 
 	m.Iter = 0
 	m.initialTime = time.Now()
@@ -90,12 +90,12 @@ func (m *Model) update() Status {
 
 	At := m.A.TrView()
 
-	m.rd.Sub(m.C, m.S)
-	m.rd.AddMul(At, m.Y, -1)
-	m.rp.Apply(m.A, m.X)
-	m.rp.Sub(m.B, m.rp)
-	m.rs.Mul(m.X, m.S)
-	m.rs.Neg(m.rs)
+	m.Rd.Sub(m.C, m.S)
+	m.Rd.AddMul(At, m.Y, -1)
+	m.Rp.Apply(m.A, m.X)
+	m.Rp.Sub(m.B, m.Rp)
+	m.Rs.Mul(m.X, m.S)
+	m.Rs.Neg(m.Rs)
 
 	if status := m.doCallbacks(); status != 0 {
 		return status

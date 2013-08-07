@@ -64,7 +64,7 @@ func (sol *PredCorr) Solve(mdl *Model) Status {
 		if status = mdl.update(); status != 0 {
 			break
 		}
-		mu = mdl.rs.Asum() / float64(n)
+		mu = mdl.Rs.Asum() / float64(n)
 
 		//determining left hand side
 		temp.ScalCols(A, xdivs.Div(x, s))
@@ -74,10 +74,10 @@ func (sol *PredCorr) Solve(mdl *Model) Status {
 		lhs.Chol(triU)
 
 		//right hand side
-		nTemp1.Add(mdl.rd, s)
+		nTemp1.Add(mdl.Rd, s)
 		nTemp1.Mul(nTemp1, xdivs)
 		rhs.Apply(A, nTemp1)
-		rhs.Add(rhs, mdl.rp)
+		rhs.Add(rhs, mdl.Rp)
 
 		//solving for dyAff
 		soli.Trsv(triUt, rhs)
@@ -85,7 +85,7 @@ func (sol *PredCorr) Solve(mdl *Model) Status {
 
 		//calculating other steps (dxAff, dsAff)
 		nTemp1.Apply(At, dyAff)
-		dxAff.Sub(nTemp1, mdl.rd)
+		dxAff.Sub(nTemp1, mdl.Rd)
 		dxAff.Sub(dxAff, s)
 		dxAff.Mul(dxAff, xdivs)
 
@@ -124,11 +124,11 @@ func (sol *PredCorr) Solve(mdl *Model) Status {
 		sigma = math.Pow(mu_aff/mu, 3)
 
 		//right hand side for predictor corrector step
-		mdl.rs.Mul(dxAff, dsAff)
-		mdl.rs.Neg(mdl.rs)
-		mdl.rs.AddSc(sigma * mu_aff)
+		mdl.Rs.Mul(dxAff, dsAff)
+		mdl.Rs.Neg(mdl.Rs)
+		mdl.Rs.AddSc(sigma * mu_aff)
 
-		nTemp1.Div(mdl.rs, s)
+		nTemp1.Div(mdl.Rs, s)
 		nTemp1.Neg(nTemp1)
 
 		rhs.Apply(A, nTemp1)
@@ -140,11 +140,11 @@ func (sol *PredCorr) Solve(mdl *Model) Status {
 		//calculating other steps (dxAff, dsAff)
 		nTemp1.Apply(At, dyCC)
 		dxCC.Mul(nTemp1, x)
-		dxCC.Add(mdl.rs, dxCC)
+		dxCC.Add(mdl.Rs, dxCC)
 		dxCC.Div(dxCC, s)
 
 		dsCC.Mul(dxCC, s)
-		dsCC.Sub(mdl.rs, dsCC)
+		dsCC.Sub(mdl.Rs, dsCC)
 		dsCC.Div(dsCC, x)
 
 		dx.Add(dxAff, dxCC)
