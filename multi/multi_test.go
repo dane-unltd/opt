@@ -58,7 +58,7 @@ func ExampleModel(t *testing.T) {
 
 func TestQuadratic(t *testing.T) {
 	mat.Register(cops)
-	n := 100
+	n := 10
 	xStar := mat.NewVec(n)
 	xStar.AddSc(1)
 	A := mat.RandN(n)
@@ -147,7 +147,9 @@ func TestQuadratic(t *testing.T) {
 }
 
 func TestRosenbrock(t *testing.T) {
-	n := 200
+	mat.Register(cops)
+
+	n := 10
 	var err error
 	scale := 10.0
 	xInit := mat.NewVec(n)

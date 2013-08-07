@@ -126,17 +126,18 @@ func (sol LBFGS) Solve(m *Model) error {
 		mls.SetX(stepSize)
 		mls.SetLB(0, m.ObjX, gLin)
 		mls.SetUB()
-		err = sol.LineSearch.Solve(mls)
-		if err != nil {
-			fmt.Println(err)
+		status := sol.LineSearch.Solve(mls)
+		if status < 0 {
+			fmt.Println("Linesearch:", status)
 			d.Copy(m.GradX)
 			d.Scal(-1)
 			mls.SetX(stepSize)
 			mls.SetLB(0, m.ObjX, -normG)
 			mls.SetUB()
-			err = sol.LineSearch.Solve(mls)
-			if err != nil {
-				fmt.Println(err)
+			status = sol.LineSearch.Solve(mls)
+			if status < 0 {
+				fmt.Println("Linesearch:", status)
+				err = errors.New("Bad Status in linesearch")
 				break
 			}
 		}

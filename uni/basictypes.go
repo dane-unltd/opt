@@ -5,10 +5,6 @@ import (
 	"time"
 )
 
-type Solver interface {
-	Solve(m *Model) error
-}
-
 //Model for a general univariate optimization problem.
 //Only change the fields directly if you know what you are doing
 //otherwise use the provided methods.
@@ -22,6 +18,14 @@ type Model struct {
 	DerivX  float64
 	Deriv2X float64
 
+	oldX      float64
+	oldObjX   float64
+	oldDerivX float64
+
+	initialDeriv    float64
+	initialInterval float64
+	initialTime     time.Time
+
 	LB      float64
 	ObjLB   float64
 	DerivLB float64
@@ -33,23 +37,45 @@ type Model struct {
 	Iter int
 	Time time.Duration
 
-	callbacks []func(m *Model)
+	Params Params
+
+	callbacks []func(m *Model) Status
 }
 
 func NewModel(obj, deriv func(float64) float64) *Model {
 	m := &Model{
-		Obj:     obj,
-		Deriv:   deriv,
+		Obj:   obj,
+		Deriv: deriv,
+
 		X:       math.NaN(),
 		ObjX:    math.NaN(),
 		DerivX:  math.NaN(),
 		Deriv2X: math.NaN(),
+
+		oldX:      math.NaN(),
+		oldObjX:   math.NaN(),
+		oldDerivX: math.NaN(),
+
+		initialDeriv:    math.NaN(),
+		initialInterval: math.Inf(1),
+
 		LB:      0,
 		ObjLB:   math.NaN(),
 		DerivLB: math.NaN(),
+
 		UB:      math.Inf(1),
 		ObjUB:   math.NaN(),
 		DerivUB: math.NaN(),
+
+		Params: Params{
+			FunTolAbs: 1e-15,
+			FunTolRel: 1e-15,
+			XTolAbs:   1e-6,
+			XTolRel:   1e-2,
+
+			IterMax: 1000,
+			TimeMax: time.Second,
+		},
 	}
 	return m
 }
@@ -98,6 +124,9 @@ func (m *Model) SetLB(lbs ...float64) {
 
 	if len(lbs) > 0 {
 		m.LB = lbs[0]
+		if m.UB < m.LB {
+			panic("uni: upper bound has to at least as high as the lower bound")
+		}
 		if len(lbs) > 1 {
 			m.ObjLB = lbs[1]
 			if len(lbs) > 2 {
@@ -116,7 +145,7 @@ func (m *Model) SetUB(ubs ...float64) {
 	if len(ubs) > 0 {
 		m.UB = ubs[0]
 		if m.UB < m.LB {
-			panic("uni: upperbound has to at least as high as the lower bound")
+			panic("uni: upper bound has to at least as high as the lower bound")
 		}
 		if len(ubs) > 1 {
 			m.ObjUB = ubs[1]
@@ -127,16 +156,77 @@ func (m *Model) SetUB(ubs ...float64) {
 	}
 }
 
-func (m *Model) AddCallback(cb func(m *Model)) {
+func (m *Model) AddCallback(cb func(m *Model) Status) {
 	m.callbacks = append(m.callbacks, cb)
-}
-
-func (m *Model) DoCallbacks() {
-	for _, cb := range m.callbacks {
-		cb(m)
-	}
 }
 
 func (m *Model) ClearCallbacks() {
 	m.callbacks = m.callbacks[0:0]
+}
+
+func (m *Model) doCallbacks() Status {
+	var status Status
+	for _, cb := range m.callbacks {
+		st := cb(m)
+		if st != 0 {
+			status = st
+		}
+	}
+	return status
+}
+
+func (m *Model) checkConvergence() Status {
+	if math.Abs(m.UB-m.LB) < m.Params.XTolAbs {
+		return XAbsConv
+	}
+	if math.Abs((m.UB-m.LB)/m.initialInterval) < m.Params.XTolRel {
+		return XRelConv
+	}
+	if math.Abs(m.DerivX-m.oldDerivX) < m.Params.FunTolAbs {
+		return DerivAbsConv
+	}
+	if math.Abs((m.DerivX-m.oldDerivX)/m.initialDeriv) < m.Params.FunTolRel {
+		return DerivRelConv
+	}
+	if math.Abs(m.ObjX-m.oldObjX) < m.Params.FunTolAbs {
+		return ObjAbsConv
+	}
+	if math.Abs((m.ObjX-m.oldObjX)/m.ObjX) < m.Params.FunTolRel {
+		return ObjRelConv
+	}
+
+	if m.Iter > m.Params.IterMax {
+		return IterLimit
+	}
+	if m.Time > m.Params.TimeMax {
+		return TimeLimit
+	}
+	return NotTerminated
+}
+
+func (m *Model) init() {
+	m.initialDeriv = m.DerivX
+	m.initialTime = time.Now()
+	m.initialInterval = m.UB - m.LB
+	if math.IsInf(m.initialInterval, 1) {
+		m.initialInterval = 0
+	}
+	m.Iter = 0
+}
+
+func (m *Model) update() Status {
+	m.Time = time.Since(m.initialTime)
+	if status := m.doCallbacks(); status != 0 {
+		return status
+	}
+	if status := m.checkConvergence(); status != 0 {
+		return status
+	}
+
+	m.oldX = m.X
+	m.oldDerivX = m.DerivX
+	m.oldObjX = m.ObjX
+	m.Iter++
+
+	return NotTerminated
 }

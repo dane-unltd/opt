@@ -1,33 +1,23 @@
 package uni
 
 import (
-	"errors"
 	"math"
-	"time"
 )
 
 //Exact line search for strictly quasi-convex functions
 type Quadratic struct {
-	TolRel  float64
-	IterMax int
-	TimeMax time.Duration
 	Inexact bool
 }
 
 func NewQuadratic(inexact bool) *Quadratic {
 	return &Quadratic{
-		TolRel:  1e-2,
-		IterMax: 1000,
-		TimeMax: time.Second,
 		Inexact: inexact,
 	}
 }
 
-func (sol *Quadratic) Solve(m *Model) error {
-	var err error = nil
+func (sol *Quadratic) Solve(m *Model) Status {
+	var status Status
 	var eps float64
-
-	tStart := time.Now()
 
 	if math.IsNaN(m.ObjLB) {
 		m.ObjLB = m.Obj(m.LB)
@@ -40,7 +30,7 @@ func (sol *Quadratic) Solve(m *Model) error {
 	f0 := m.ObjLB
 	g0 := m.DerivLB
 
-	m.Iter = 0
+	m.init()
 
 	if math.IsInf(m.UB, 1) {
 		xNew = m.X
@@ -60,7 +50,7 @@ func (sol *Quadratic) Solve(m *Model) error {
 
 			m.UB = m.X + step
 			m.ObjUB = m.Obj(m.UB)
-			for ; m.Iter < sol.IterMax && m.ObjUB <= m.ObjX; m.Iter++ {
+			for m.ObjUB <= m.ObjX {
 				m.LB = m.X
 				m.ObjLB = m.ObjX
 
@@ -71,10 +61,7 @@ func (sol *Quadratic) Solve(m *Model) error {
 				m.UB = m.X + step
 				m.ObjUB = m.Obj(m.UB)
 
-				m.Time = time.Since(tStart)
-				m.DoCallbacks()
-				if m.Time > sol.TimeMax {
-					err = errors.New("Quadratic: Time limit reached")
+				if status = m.update(); status != 0 {
 					goto done
 				}
 			}
@@ -86,7 +73,7 @@ func (sol *Quadratic) Solve(m *Model) error {
 
 			m.X = m.LB + step
 			m.ObjX = m.Obj(m.X)
-			for ; m.Iter < sol.IterMax && m.ObjX >= m.ObjLB; m.Iter++ {
+			for m.ObjX >= m.ObjLB {
 				m.UB = m.X
 				m.ObjUB = m.ObjX
 
@@ -94,16 +81,16 @@ func (sol *Quadratic) Solve(m *Model) error {
 				m.X = m.LB + step
 				m.ObjX = m.Obj(m.X)
 
-				m.Time = time.Since(tStart)
-				m.DoCallbacks()
-				if m.Time > sol.TimeMax {
-					err = errors.New("Quadratic: Time limit reached")
+				if status = m.update(); status != 0 {
 					goto done
 				}
 			}
 		}
 	} else {
-		eps = sol.TolRel * (m.UB - m.LB)
+		eps = math.Min(m.Params.XTolAbs, m.Params.XTolRel*m.initialInterval)
+		if eps <= 0 {
+			eps = 0.01 * m.initialInterval
+		}
 		m.UB = m.UB
 		m.ObjUB = m.ObjUB
 		if math.IsNaN(m.ObjUB) {
@@ -120,14 +107,11 @@ func (sol *Quadratic) Solve(m *Model) error {
 		} else {
 			m.X = 0.5 * m.UB
 			m.ObjX = m.Obj(m.X)
-			for ; m.Iter < sol.IterMax && m.ObjX >= m.ObjLB; m.Iter++ {
+			for m.ObjX >= m.ObjLB {
 				m.X *= 0.5
 				m.ObjX = m.Obj(m.X)
 
-				m.Time = time.Since(tStart)
-				m.DoCallbacks()
-				if m.Time > sol.TimeMax {
-					err = errors.New("Quadratic: Time limit reached")
+				if status = m.update(); status != 0 {
 					goto done
 				}
 			}
@@ -135,10 +119,15 @@ func (sol *Quadratic) Solve(m *Model) error {
 	}
 
 	if eps == 0 {
-		eps = sol.TolRel * (m.UB - m.LB)
+		m.initialInterval = m.UB - m.LB
+		eps = math.Min(m.Params.XTolAbs, m.Params.XTolRel*m.initialInterval)
+		if eps == 0 {
+			eps = 0.01 * m.initialInterval
+		}
 	}
 
-	for ; m.Iter < sol.IterMax; m.Iter++ {
+	for {
+		//optimum of quadratic fit
 		xNew = -0.5 * (m.UB*m.UB*(m.ObjLB-m.ObjX) + m.X*m.X*(m.ObjUB-m.ObjLB) + m.LB*m.LB*(m.ObjX-m.ObjUB)) /
 			(m.UB*(m.ObjX-m.ObjLB) + m.X*(m.ObjLB-m.ObjUB) + m.LB*(m.ObjUB-m.ObjX))
 
@@ -160,8 +149,14 @@ func (sol *Quadratic) Solve(m *Model) error {
 
 		if !(xNew > m.LB && xNew < m.UB) || (xNew < m.X && fNew > m.ObjLB) ||
 			(xNew > m.X && fNew > m.ObjUB) {
-			//	err = errors.New("Quadratic: ran into numerical problems")
-			break
+			if m.UB-m.X > m.X-m.LB {
+				xNew = (m.X + m.UB) / 2
+			} else {
+				xNew = (m.X + m.LB) / 2
+			}
+			fNew = m.Obj(xNew)
+			println(xNew, fNew, m.Obj(1))
+			panic("break")
 		}
 
 		if xNew > m.X {
@@ -186,27 +181,17 @@ func (sol *Quadratic) Solve(m *Model) error {
 			}
 		}
 
-		m.Time = time.Since(tStart)
-		m.DoCallbacks()
-
 		if sol.Inexact {
 			if f0-m.ObjX <= (m.X-x0)*0.5*g0 {
 				break
 			}
 		}
-		if (m.UB - m.LB) <= eps {
-			break
-		}
-		if m.Time > sol.TimeMax {
-			err = errors.New("Quadratic: Time limit reached")
+		if status = m.update(); status != 0 {
 			break
 		}
 	}
 
 done:
-	if m.Iter == sol.IterMax {
-		err = errors.New("Quadratic: Maximum number of Iterations reached")
-	}
 
-	return err
+	return status
 }

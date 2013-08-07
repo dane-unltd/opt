@@ -88,9 +88,10 @@ func (sol *ProjGrad) Solve(m *Model) error {
 		mls.SetX(s)
 		mls.SetLB(0, m.ObjX, gLin)
 		mls.SetUB()
-		err = sol.LineSearch.Solve(mls)
-		if err != nil {
-			fmt.Println(err)
+		status := sol.LineSearch.Solve(mls)
+		if status < 0 {
+			fmt.Println("Linesearch:", status)
+			err = errors.New("Bad status in line search")
 			break
 		}
 		s, m.ObjX = mls.X, mls.ObjX

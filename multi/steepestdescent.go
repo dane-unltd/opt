@@ -80,9 +80,15 @@ func (sol *SteepestDescent) Solve(m *Model) error {
 		mls.SetX(s)
 		mls.SetLB(0, m.ObjX, gLin)
 		mls.SetUB()
-		err = sol.LineSearch.Solve(mls)
-		if err != nil {
-			fmt.Println(err)
+		fmt.Println("*********")
+		fmt.Println(m.ObjX)
+		fmt.Println(m.X)
+		fmt.Println(d)
+		status := sol.LineSearch.Solve(mls)
+		fmt.Println(status, mls.X)
+		if status < 0 {
+			fmt.Println("Linesearch:", status)
+			err = errors.New("Bad status in line search")
 			break
 		}
 		s, m.ObjX = mls.X, mls.ObjX

@@ -1,26 +1,22 @@
 package uni
 
 import (
-	"errors"
 	"math"
-	"time"
 )
 
 //Inexact line search using Armijo's rule.
 type Armijo struct {
-	IterMax int
 }
 
 func NewArmijo() *Armijo {
-	return &Armijo{IterMax: 1000}
+	return &Armijo{}
 }
 
-func (s *Armijo) Solve(m *Model) error {
-	var err error = nil
-
-	tStart := time.Now()
+func (s *Armijo) Solve(m *Model) Status {
+	var status Status
 
 	beta := 0.5
+	sigma := 0.2
 
 	step := m.X - m.LB
 	maxStep := m.UB - m.LB
@@ -40,29 +36,27 @@ func (s *Armijo) Solve(m *Model) error {
 	}
 
 	if m.DerivLB > 0 {
-		err = errors.New("Armijo: No progress possible")
-		return err
+		status = Fail
+		return status
 	}
 
 	m.X = m.LB + step
 	m.ObjX = m.Obj(m.X)
 
-	m.Iter = 0
+	m.init()
 
-	if m.ObjX-m.ObjLB > 0.5*m.DerivLB*step {
+	if m.ObjX-m.ObjLB > sigma*m.DerivLB*step {
 		fPrev := m.ObjX
 		step *= beta
 		for {
-			m.Iter++
-			if m.Iter == s.IterMax {
-				break
-			}
 			m.X = m.LB + step
 			m.ObjX = m.Obj(m.X)
-			m.Time = time.Since(tStart)
-			m.DoCallbacks()
 
-			if m.ObjX-m.ObjLB <= 0.5*m.DerivLB*step {
+			if status = m.update(); status != 0 {
+				break
+			}
+
+			if m.ObjX-m.ObjLB <= sigma*m.DerivLB*step {
 				if fPrev < m.ObjX {
 					step /= beta
 					m.X = m.LB + step
@@ -83,16 +77,13 @@ func (s *Armijo) Solve(m *Model) error {
 			step = maxStep
 		}
 		for {
-			m.Iter++
-			if m.Iter == s.IterMax {
-				break
-			}
 			m.X = m.LB + step
 			m.ObjX = m.Obj(m.X)
-			m.Time = time.Since(tStart)
-			m.DoCallbacks()
+			if status = m.update(); status != 0 {
+				break
+			}
 
-			if m.ObjX-m.ObjLB > 0.5*m.DerivLB*step {
+			if m.ObjX-m.ObjLB > sigma*m.DerivLB*step {
 				if fPrev < m.ObjX {
 					step *= beta
 					m.X = m.LB + step
@@ -112,14 +103,11 @@ func (s *Armijo) Solve(m *Model) error {
 	}
 
 done:
-	if m.Iter == s.IterMax {
-		err = errors.New("Armijo: Maximum number of Iterations reached")
-	}
 
 	if m.ObjX >= m.ObjLB {
-		println(m.DerivLB, step, maxStep)
-		err = errors.New("Armijo: No progress made")
+		println(m.DerivLB, step, m.ObjX-m.ObjLB, sigma*m.DerivLB*step)
+		status = ObjAbsConv
 	}
 
-	return err
+	return status
 }
