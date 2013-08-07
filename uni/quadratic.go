@@ -155,8 +155,6 @@ func (sol *Quadratic) Solve(m *Model) Status {
 				xNew = (m.X + m.LB) / 2
 			}
 			fNew = m.Obj(xNew)
-			println(xNew, fNew, m.Obj(1))
-			panic("break")
 		}
 
 		if xNew > m.X {

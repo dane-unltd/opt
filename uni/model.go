@@ -52,9 +52,8 @@ func NewModel(obj, deriv func(float64) float64) *Model {
 		DerivX:  math.NaN(),
 		Deriv2X: math.NaN(),
 
-		oldX:      math.NaN(),
-		oldObjX:   math.NaN(),
-		oldDerivX: math.NaN(),
+		oldX:    math.NaN(),
+		oldObjX: math.NaN(),
 
 		initialDeriv:    math.NaN(),
 		initialInterval: math.Inf(1),
@@ -66,6 +65,8 @@ func NewModel(obj, deriv func(float64) float64) *Model {
 		UB:      math.Inf(1),
 		ObjUB:   math.NaN(),
 		DerivUB: math.NaN(),
+
+		callbacks: make([]func(m *Model) Status, 0),
 
 		Params: Params{
 			FunTolAbs: 1e-15,
@@ -182,10 +183,10 @@ func (m *Model) checkConvergence() Status {
 	if math.Abs((m.UB-m.LB)/m.initialInterval) < m.Params.XTolRel {
 		return XRelConv
 	}
-	if math.Abs(m.DerivX-m.oldDerivX) < m.Params.FunTolAbs {
+	if math.Abs(m.DerivX) < m.Params.FunTolAbs {
 		return DerivAbsConv
 	}
-	if math.Abs((m.DerivX-m.oldDerivX)/m.initialDeriv) < m.Params.FunTolRel {
+	if math.Abs(m.DerivX/m.initialDeriv) < m.Params.FunTolRel {
 		return DerivRelConv
 	}
 	if math.Abs(m.ObjX-m.oldObjX) < m.Params.FunTolAbs {

@@ -1,31 +1,22 @@
 package linprog
 
 import (
-	"errors"
 	"github.com/dane-unltd/linalg/mat"
 	"math"
-	"time"
 )
 
 type PredCorr struct {
-	Tol     float64
-	IterMax int
-	TimeMax time.Duration
 }
 
 func NewPredCorr() *PredCorr {
-	return &PredCorr{Tol: 1e-10, IterMax: 100, TimeMax: time.Minute}
+	return &PredCorr{}
 }
 
 //Predictor-Corrector Interior Point implementation
-func (sol *PredCorr) Solve(mdl *Model) error {
-	var err error
-
-	tStart := time.Now()
+func (sol *PredCorr) Solve(mdl *Model) Status {
+	var status Status
 
 	A := mdl.A
-	b := mdl.B
-	c := mdl.C
 
 	m, n := A.Dims()
 
@@ -52,10 +43,6 @@ func (sol *PredCorr) Solve(mdl *Model) error {
 	dsCC := mat.NewVec(n)
 	dyCC := mat.NewVec(m)
 
-	rd := mat.NewVec(n)
-	rp := mat.NewVec(m)
-	rs := mat.NewVec(n)
-
 	xdivs := mat.NewVec(n)
 	temp := mat.New(m, n)
 
@@ -71,20 +58,13 @@ func (sol *PredCorr) Solve(mdl *Model) error {
 
 	alpha := 0.0
 
-	mdl.Iter = 0
-	for ; mdl.Iter < sol.IterMax; mdl.Iter++ {
-		rd.Sub(c, s)
-		rd.AddMul(At, y, -1)
-		rp.Apply(A, x)
-		rp.Sub(b, rp)
-		rs.Mul(x, s)
-		rs.Neg(rs)
+	mdl.init()
+	for {
 
-		mu = rs.Asum() / float64(n)
-
-		if (rd.Asum()+rp.Asum()+rs.Asum())/float64(n) < sol.Tol {
+		if status = mdl.update(); status != 0 {
 			break
 		}
+		mu = mdl.rs.Asum() / float64(n)
 
 		//determining left hand side
 		temp.ScalCols(A, xdivs.Div(x, s))
@@ -94,10 +74,10 @@ func (sol *PredCorr) Solve(mdl *Model) error {
 		lhs.Chol(triU)
 
 		//right hand side
-		nTemp1.Add(rd, s)
+		nTemp1.Add(mdl.rd, s)
 		nTemp1.Mul(nTemp1, xdivs)
 		rhs.Apply(A, nTemp1)
-		rhs.Add(rhs, rp)
+		rhs.Add(rhs, mdl.rp)
 
 		//solving for dyAff
 		soli.Trsv(triUt, rhs)
@@ -105,7 +85,7 @@ func (sol *PredCorr) Solve(mdl *Model) error {
 
 		//calculating other steps (dxAff, dsAff)
 		nTemp1.Apply(At, dyAff)
-		dxAff.Sub(nTemp1, rd)
+		dxAff.Sub(nTemp1, mdl.rd)
 		dxAff.Sub(dxAff, s)
 		dxAff.Mul(dxAff, xdivs)
 
@@ -144,11 +124,11 @@ func (sol *PredCorr) Solve(mdl *Model) error {
 		sigma = math.Pow(mu_aff/mu, 3)
 
 		//right hand side for predictor corrector step
-		rs.Mul(dxAff, dsAff)
-		rs.Neg(rs)
-		rs.AddSc(sigma * mu_aff)
+		mdl.rs.Mul(dxAff, dsAff)
+		mdl.rs.Neg(mdl.rs)
+		mdl.rs.AddSc(sigma * mu_aff)
 
-		nTemp1.Div(rs, s)
+		nTemp1.Div(mdl.rs, s)
 		nTemp1.Neg(nTemp1)
 
 		rhs.Apply(A, nTemp1)
@@ -160,11 +140,11 @@ func (sol *PredCorr) Solve(mdl *Model) error {
 		//calculating other steps (dxAff, dsAff)
 		nTemp1.Apply(At, dyCC)
 		dxCC.Mul(nTemp1, x)
-		dxCC.Add(rs, dxCC)
+		dxCC.Add(mdl.rs, dxCC)
 		dxCC.Div(dxCC, s)
 
 		dsCC.Mul(dxCC, s)
-		dsCC.Sub(rs, dsCC)
+		dsCC.Sub(mdl.rs, dsCC)
 		dsCC.Div(dsCC, x)
 
 		dx.Add(dxAff, dxCC)
@@ -193,17 +173,7 @@ func (sol *PredCorr) Solve(mdl *Model) error {
 		x.Axpy(alpha, dx)
 		y.Axpy(alpha, dy)
 		s.Axpy(alpha, ds)
-
-		mdl.Time = time.Since(tStart)
-		mdl.DoCallbacks()
-		if mdl.Time > sol.TimeMax {
-			err = errors.New("linprog: time limit reached")
-		}
 	}
 
-	if mdl.Iter == sol.IterMax {
-		err = errors.New("PredCorr: Maximum number of iterations reached")
-	}
-
-	return err
+	return status
 }

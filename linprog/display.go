@@ -16,7 +16,7 @@ func NewDisplay(f int) *Display {
 	}
 }
 
-func (dsp *Display) Update(mdl *Model) {
+func (dsp *Display) Update(mdl *Model) Status {
 	if dsp.rd == nil {
 		m, n := mdl.A.Dims()
 		dsp.rd = mat.NewVec(n)
@@ -43,4 +43,6 @@ func (dsp *Display) Update(mdl *Model) {
 		fmt.Printf("%3d   %3.2f    %.2E         %.2E            %.2E\n", mdl.Iter,
 			mdl.Time.Seconds(), dsp.rd.Asum(), dsp.rp.Asum(), dsp.rs.Asum())
 	}
+
+	return NotTerminated
 }

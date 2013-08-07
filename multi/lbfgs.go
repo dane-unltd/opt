@@ -1,38 +1,27 @@
 package multi
 
 import (
-	"errors"
 	"fmt"
 	"github.com/dane-unltd/linalg/mat"
 	"github.com/dane-unltd/opt/uni"
 	"math"
-	"time"
 )
 
 type LBFGS struct {
-	TolAbs, TolRel float64
-	IterMax        int
-	TimeMax        time.Duration
-	Mem            int
-	LineSearch     uni.Solver
+	Mem        int
+	LineSearch uni.Solver
 }
 
 func NewLBFGS() *LBFGS {
 	s := &LBFGS{
-		TolRel:     1e-3,
-		TolAbs:     1e-3,
-		IterMax:    1000,
-		TimeMax:    time.Minute,
 		Mem:        5,
 		LineSearch: uni.NewArmijo(),
 	}
 	return s
 }
 
-func (sol LBFGS) Solve(m *Model) error {
-	var err error
-
-	startT := time.Now()
+func (sol LBFGS) Solve(m *Model) Status {
+	var status Status
 
 	stepSize := 1.0
 
@@ -48,9 +37,6 @@ func (sol LBFGS) Solve(m *Model) error {
 	}
 
 	gLin := 0.0
-
-	normG0 := m.GradX.Nrm2()
-	normG := m.GradX.Nrm2()
 
 	S := make([]mat.Vec, sol.Mem)
 	Y := make([]mat.Vec, sol.Mem)
@@ -79,8 +65,9 @@ func (sol LBFGS) Solve(m *Model) error {
 	}
 	mls := uni.NewModel(lineFun, nil)
 
-	m.Iter = 0
-	for ; m.Iter < sol.IterMax; m.Iter++ {
+	m.init()
+
+	for {
 
 		d.Copy(m.GradX)
 		if m.Iter > 0 {
@@ -113,31 +100,26 @@ func (sol LBFGS) Solve(m *Model) error {
 
 		gLin = mat.Dot(d, m.GradX)
 
-		m.Time = time.Since(startT)
-		m.DoCallbacks()
-
-		if m.Time > sol.TimeMax {
-			err = errors.New("Time limit reached")
-		}
-		if normG < sol.TolAbs || normG/normG0 < sol.TolRel {
+		if status = m.update(); status != 0 {
 			break
 		}
 
 		mls.SetX(stepSize)
 		mls.SetLB(0, m.ObjX, gLin)
 		mls.SetUB()
-		status := sol.LineSearch.Solve(mls)
-		if status < 0 {
+		lsStatus := sol.LineSearch.Solve(mls)
+		if lsStatus < 0 {
 			fmt.Println("Linesearch:", status)
 			d.Copy(m.GradX)
 			d.Scal(-1)
 			mls.SetX(stepSize)
-			mls.SetLB(0, m.ObjX, -normG)
+			mls.SetLB(0, m.ObjX, -m.GradX.Nrm2Sq())
 			mls.SetUB()
-			status = sol.LineSearch.Solve(mls)
-			if status < 0 {
+			lsStatus = sol.LineSearch.Solve(mls)
+			if lsStatus < 0 {
 				fmt.Println("Linesearch:", status)
-				err = errors.New("Bad Status in linesearch")
+				status = Status(lsStatus)
+
 				break
 			}
 		}
@@ -148,11 +130,7 @@ func (sol LBFGS) Solve(m *Model) error {
 
 		m.X.Axpy(stepSize, d)
 		m.Grad(m.X, m.GradX)
-		normG = m.GradX.Nrm2()
 	}
 
-	if m.Iter == sol.IterMax {
-		err = errors.New("Maximum number of iterations reached")
-	}
-	return err
+	return status
 }

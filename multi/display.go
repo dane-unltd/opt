@@ -6,11 +6,11 @@ type Display struct {
 	Period int
 }
 
-func NewDisplay(f int) *Display {
-	return &Display{Period: f}
+func NewDisplay(p int) *Display {
+	return &Display{Period: p}
 }
 
-func (dsp *Display) Update(m *Model) {
+func (dsp *Display) Update(m *Model) Status {
 	if m.Iter == 0 {
 		fmt.Println("------------------------------------------")
 		fmt.Println("Iter     Time    Objective   Gradient-Norm")
@@ -23,4 +23,5 @@ func (dsp *Display) Update(m *Model) {
 		fmt.Printf("%6d   %3.2f    %.2E    %.2E\n", m.Iter,
 			m.Time.Seconds(), m.ObjX, m.GradX.Nrm2())
 	}
+	return 0
 }

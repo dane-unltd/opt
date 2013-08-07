@@ -24,7 +24,16 @@ type Model struct {
 	Iter int
 	Time time.Duration
 
-	callbacks []func(m *Model)
+	initialGradNorm float64
+	initialTime     time.Time
+	gradNorm        float64
+
+	oldX    mat.Vec
+	oldObjX float64
+
+	Params Params
+
+	callbacks []func(m *Model) Status
 }
 
 func NewModel(n int, obj func(mat.Vec) float64, grad func(mat.Vec, mat.Vec), proj func(mat.Vec)) *Model {
@@ -34,7 +43,16 @@ func NewModel(n int, obj func(mat.Vec) float64, grad func(mat.Vec, mat.Vec), pro
 	m.Grad = grad
 	m.Proj = proj
 	m.ObjX = math.NaN()
-	m.callbacks = make([]func(m *Model), 0)
+	m.callbacks = make([]func(m *Model) Status, 0)
+	m.Params = Params{
+		FunTolAbs: 1e-15,
+		FunTolRel: 1e-15,
+		XTolAbs:   1e-6,
+		XTolRel:   1e-2,
+
+		IterMax: 1000,
+		TimeMax: time.Second,
+	}
 	return m
 }
 
@@ -71,16 +89,68 @@ func (m *Model) AddVar(x float64) {
 	m.HessianX = nil
 }
 
-func (m *Model) AddCallback(cb func(m *Model)) {
+func (m *Model) AddCallback(cb func(m *Model) Status) {
 	m.callbacks = append(m.callbacks, cb)
-}
-
-func (m *Model) DoCallbacks() {
-	for _, cb := range m.callbacks {
-		cb(m)
-	}
 }
 
 func (m *Model) ClearCallbacks() {
 	m.callbacks = m.callbacks[0:0]
+}
+
+func (m *Model) doCallbacks() Status {
+	var status Status
+	for _, cb := range m.callbacks {
+		st := cb(m)
+		if st != 0 {
+			status = st
+		}
+	}
+	return status
+}
+
+func (m *Model) checkConvergence() Status {
+	if math.Abs(m.gradNorm) < m.Params.FunTolAbs {
+		return GradAbsConv
+	}
+	if math.Abs((m.gradNorm)/m.initialGradNorm) < m.Params.FunTolRel {
+		return GradRelConv
+	}
+	if math.Abs(m.ObjX-m.oldObjX) < m.Params.FunTolAbs {
+		return ObjAbsConv
+	}
+	if math.Abs((m.ObjX-m.oldObjX)/m.ObjX) < m.Params.FunTolRel {
+		return ObjRelConv
+	}
+
+	if m.Iter > m.Params.IterMax {
+		return IterLimit
+	}
+	if m.Time > m.Params.TimeMax {
+		return TimeLimit
+	}
+	return NotTerminated
+}
+
+func (m *Model) init() {
+	m.initialGradNorm = m.GradX.Nrm2()
+	m.initialTime = time.Now()
+	m.oldX = mat.NewVec(m.N).Scal(math.NaN())
+	m.Iter = 0
+}
+
+func (m *Model) update() Status {
+	m.Time = time.Since(m.initialTime)
+	m.gradNorm = m.GradX.Nrm2()
+	if status := m.doCallbacks(); status != 0 {
+		return status
+	}
+	if status := m.checkConvergence(); status != 0 {
+		return status
+	}
+
+	m.oldX.Copy(m.X)
+	m.oldObjX = m.ObjX
+	m.Iter++
+
+	return NotTerminated
 }

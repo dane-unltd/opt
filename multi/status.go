@@ -1,18 +1,18 @@
-package opt
+package multi
 
 type Status int
 
 const (
 	NotTerminated (Status) = 0
 
-	DerivAbsConv = 1
-	DerivRelConv = 2
+	GradAbsConv = 1
+	GradRelConv = 2
 
 	ObjAbsConv = 3
 	ObjRelConv = 4
 
-	XConvAbs = 5
-	XConvRel = 6
+	XAbsConv = 5
+	XRelConv = 6
 
 	Success = 7
 
