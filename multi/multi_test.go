@@ -199,15 +199,47 @@ func TestRosenbrock(t *testing.T) {
 	}
 }
 
+type rb struct {
+	opt.Rosenbrock
+}
+
+func (r rb) ValGrad() {}
+
+type rosTest struct {
+}
+
+func (r rosTest) Val(x mat.Vec) float64 {
+	return math.Pow(x[0]-2, 4) + math.Pow(x[0]-2*x[1], 2)
+}
+
 func TestSolve(t *testing.T) {
 	mat.Register(cops)
 
 	xInit := mat.RandVec(10).Scal(10.0)
 
-	mdl := Solve(opt.Rosenbrock{}, xInit, nil, NewDisplay(5))
+	mdl := Solve(opt.Rosenbrock{}, xInit, nil, NewDisplay(10))
 
+	t.Log(mdl.Status, mdl.ObjX, mdl.Iter)
 	if math.Abs(mdl.ObjX) > 0.1 {
-		t.Log(mdl.ObjX)
 		t.Fail()
 	}
+
+	params := NewParams()
+	params.IterMax = 100000
+
+	mdl = SolveProjected(opt.Rosenbrock{}, opt.RealPlus{}, xInit,
+		params, NewDisplay(1000))
+	t.Log(mdl.Status, mdl.ObjX, mdl.Iter)
+
+	params.XTolAbs = 1e-9
+	params.XTolRel = 0
+	params.FunTolRel = 0
+	params.FunTolAbs = 0
+	params.IterMax = 100000
+	mdl = Solve(rb{}, xInit, params, NewDisplay(10))
+	t.Log(mdl.Status, mdl.ObjX, mdl.Iter, mdl.X)
+
+	xInit = mat.Vec{0, 3}
+	mdl = Solve(rosTest{}, xInit, params, NewDisplay(10))
+	t.Log(mdl.Status, mdl.ObjX, mdl.Iter)
 }

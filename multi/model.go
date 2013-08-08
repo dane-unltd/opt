@@ -39,6 +39,7 @@ type Model struct {
 
 	oldX    mat.Vec
 	oldObjX float64
+	temp    mat.Vec
 
 	callbacks []Callback
 }
@@ -124,6 +125,11 @@ func (m *Model) checkConvergence() Status {
 		return ObjRelConv
 	}
 
+	m.temp.Sub(m.X, m.oldX)
+	if m.temp.Nrm2() < m.Params.XTolAbs {
+		return XAbsConv
+	}
+
 	if m.Iter > m.Params.IterMax {
 		return IterLimit
 	}
@@ -136,6 +142,7 @@ func (m *Model) checkConvergence() Status {
 func (m *Model) init(useG, useH bool) {
 	m.initialTime = time.Now()
 	m.oldX = mat.NewVec(m.N).Scal(math.NaN())
+	m.temp = mat.NewVec(m.N).Scal(math.NaN())
 	m.Iter = 0
 
 	if m.X == nil {

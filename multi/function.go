@@ -25,6 +25,7 @@ type Projection interface {
 type LineFunc struct {
 	f           Function
 	x, d, xTemp mat.Vec
+	Dir         float64
 }
 
 func NewLineFunc(f Function, x, d mat.Vec) *LineFunc {
@@ -36,14 +37,23 @@ func NewLineFunc(f Function, x, d mat.Vec) *LineFunc {
 		f:     f,
 		x:     x,
 		d:     d,
+		Dir:   1,
 		xTemp: mat.NewVec(n),
 	}
 }
 
-func (lf *LineFunc) Val(x float64) float64 {
+func (lf *LineFunc) Val(alpha float64) float64 {
 	lf.xTemp.Copy(lf.x)
-	lf.xTemp.Axpy(x, lf.d)
+	lf.xTemp.Axpy(lf.Dir*alpha, lf.d)
 	return lf.f.Val(lf.xTemp)
+}
+
+func (lf *LineFunc) SwitchDir() {
+	if lf.Dir > 0 {
+		lf.Dir = -1
+	} else {
+		lf.Dir = 1
+	}
 }
 
 type LineFuncDeriv struct {

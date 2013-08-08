@@ -21,7 +21,7 @@ func (dsp *Display) Update(m *Model) Status {
 	}
 	if m.Iter%dsp.Period == 0 {
 		fmt.Printf("%6d   %3.2f    %.2E    %.2E\n", m.Iter,
-			m.Time.Seconds(), m.ObjX, m.GradX.Nrm2())
+			m.Time.Seconds(), m.ObjX, m.gradNorm)
 	}
 	return 0
 }

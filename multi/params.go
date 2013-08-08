@@ -21,6 +21,6 @@ func NewParams() *Params {
 		XTolRel:   1e-2,
 
 		IterMax: 1000,
-		TimeMax: time.Second,
+		TimeMax: time.Minute,
 	}
 }
