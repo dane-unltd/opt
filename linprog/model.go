@@ -14,6 +14,8 @@ type Model struct {
 	Iter int
 	Time time.Duration
 
+	Status Status
+
 	Rp, Rd, Rs mat.Vec
 
 	Params Params

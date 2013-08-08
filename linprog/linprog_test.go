@@ -33,8 +33,7 @@ func TestLinprog2(t *testing.T) {
 
 	mdl := NewStandard(c, A, b)
 
-	sol := NewPredCorr()
-	sol.Solve(mdl)
+	Solve(mdl)
 
 	rd := mat.NewVec(n)
 	rp := mat.NewVec(m)
@@ -82,8 +81,7 @@ func TestLinprog(t *testing.T) {
 	//Example for printing duality gap and infeasibilities
 	mdl.AddCallback(NewDisplay(2).Update)
 
-	sol := NewPredCorr()
-	sol.Solve(mdl)
+	Solve(mdl)
 
 	rd.Sub(c, mdl.S)
 	rd.AddMul(At, mdl.Y, -1)
@@ -118,9 +116,8 @@ func BenchmarkLinprog(bench *testing.B) {
 		At := A.TrView()
 
 		mdl := NewStandard(c, A, b)
-		sol := NewPredCorr()
 		bench.StartTimer()
-		sol.Solve(mdl)
+		Solve(mdl)
 		bench.StopTimer()
 
 		rd.Sub(c, mdl.S)

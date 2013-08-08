@@ -36,14 +36,7 @@ func (sol *ProjGrad) Solve(m *Model) {
 
 	gLin := -xTemp.Nrm2Sq()
 
-	lineFun := func(s float64) float64 {
-		xTemp.Copy(m.X)
-		xTemp.Axpy(s, d)
-		m.Proj.Project(xTemp)
-		return m.Obj.Val(xTemp)
-	}
-
-	mls := uni.NewModel(lineFun, nil)
+	mls := uni.NewModel(NewLineFuncProj(m.grad, m.Proj, m.X, d))
 
 	for {
 		if m.Status = m.update(); m.Status != 0 {
@@ -53,9 +46,9 @@ func (sol *ProjGrad) Solve(m *Model) {
 		mls.SetX(s)
 		mls.SetLB(0, m.ObjX, gLin)
 		mls.SetUB()
-		lsStatus := sol.LineSearch.Solve(mls)
-		if lsStatus < 0 {
-			m.Status = Status(lsStatus)
+		sol.LineSearch.Solve(mls)
+		if mls.Status < 0 {
+			m.Status = Status(mls.Status)
 			break
 		}
 		s, m.ObjX = mls.X, mls.ObjX

@@ -15,12 +15,11 @@ func NewQuadratic(inexact bool) *Quadratic {
 	}
 }
 
-func (sol *Quadratic) Solve(m *Model) Status {
-	var status Status
+func (sol *Quadratic) Solve(m *Model) {
 	var eps float64
 
 	if math.IsNaN(m.ObjLB) {
-		m.ObjLB = m.Obj(m.LB)
+		m.ObjLB = m.Obj.Val(m.LB)
 	}
 
 	fNew := 0.0
@@ -30,17 +29,17 @@ func (sol *Quadratic) Solve(m *Model) Status {
 	f0 := m.ObjLB
 	g0 := m.DerivLB
 
-	m.init()
+	m.init(false, false)
 
 	if math.IsInf(m.UB, 1) {
 		xNew = m.X
 		fNew = m.ObjX
 		if math.IsNaN(xNew) {
 			xNew = 1
-			fNew = m.Obj(xNew)
+			fNew = m.Obj.Val(xNew)
 		}
 		if math.IsNaN(fNew) {
-			fNew = m.Obj(xNew)
+			fNew = m.Obj.Val(xNew)
 		}
 
 		step := m.X - m.LB
@@ -49,7 +48,7 @@ func (sol *Quadratic) Solve(m *Model) Status {
 			m.X = xNew
 
 			m.UB = m.X + step
-			m.ObjUB = m.Obj(m.UB)
+			m.ObjUB = m.Obj.Val(m.UB)
 			for m.ObjUB <= m.ObjX {
 				m.LB = m.X
 				m.ObjLB = m.ObjX
@@ -59,10 +58,10 @@ func (sol *Quadratic) Solve(m *Model) Status {
 
 				step *= 2
 				m.UB = m.X + step
-				m.ObjUB = m.Obj(m.UB)
+				m.ObjUB = m.Obj.Val(m.UB)
 
-				if status = m.update(); status != 0 {
-					goto done
+				if m.Status = m.update(); m.Status != 0 {
+					return
 				}
 			}
 		} else {
@@ -72,17 +71,17 @@ func (sol *Quadratic) Solve(m *Model) Status {
 			step *= 0.5
 
 			m.X = m.LB + step
-			m.ObjX = m.Obj(m.X)
+			m.ObjX = m.Obj.Val(m.X)
 			for m.ObjX >= m.ObjLB {
 				m.UB = m.X
 				m.ObjUB = m.ObjX
 
 				step *= 0.5
 				m.X = m.LB + step
-				m.ObjX = m.Obj(m.X)
+				m.ObjX = m.Obj.Val(m.X)
 
-				if status = m.update(); status != 0 {
-					goto done
+				if m.Status = m.update(); m.Status != 0 {
+					return
 				}
 			}
 		}
@@ -94,25 +93,26 @@ func (sol *Quadratic) Solve(m *Model) Status {
 		m.UB = m.UB
 		m.ObjUB = m.ObjUB
 		if math.IsNaN(m.ObjUB) {
-			m.ObjUB = m.Obj(m.UB)
+			m.ObjUB = m.Obj.Val(m.UB)
 		}
 		if m.ObjUB < m.ObjLB {
 			m.X = m.UB - eps
-			m.ObjX = m.Obj(m.X)
+			m.ObjX = m.Obj.Val(m.X)
 			if m.ObjX >= m.ObjUB {
 				m.X = m.UB
 				m.ObjX = m.ObjUB
-				goto done
+				m.Status = XRelConv
+				return
 			}
 		} else {
 			m.X = 0.5 * m.UB
-			m.ObjX = m.Obj(m.X)
+			m.ObjX = m.Obj.Val(m.X)
 			for m.ObjX >= m.ObjLB {
 				m.X *= 0.5
-				m.ObjX = m.Obj(m.X)
+				m.ObjX = m.Obj.Val(m.X)
 
-				if status = m.update(); status != 0 {
-					goto done
+				if m.Status = m.update(); m.Status != 0 {
+					return
 				}
 			}
 		}
@@ -145,7 +145,7 @@ func (sol *Quadratic) Solve(m *Model) Status {
 			}
 		}
 
-		fNew = m.Obj(xNew)
+		fNew = m.Obj.Val(xNew)
 
 		if !(xNew > m.LB && xNew < m.UB) || (xNew < m.X && fNew > m.ObjLB) ||
 			(xNew > m.X && fNew > m.ObjUB) {
@@ -154,7 +154,7 @@ func (sol *Quadratic) Solve(m *Model) Status {
 			} else {
 				xNew = (m.X + m.LB) / 2
 			}
-			fNew = m.Obj(xNew)
+			fNew = m.Obj.Val(xNew)
 		}
 
 		if xNew > m.X {
@@ -184,12 +184,8 @@ func (sol *Quadratic) Solve(m *Model) Status {
 				break
 			}
 		}
-		if status = m.update(); status != 0 {
+		if m.Status = m.update(); m.Status != 0 {
 			break
 		}
 	}
-
-done:
-
-	return status
 }

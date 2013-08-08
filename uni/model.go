@@ -5,13 +5,17 @@ import (
 	"time"
 )
 
+type Callback interface {
+	Update(m *Model) Status
+}
+
 //Model for a general univariate optimization problem.
 //Only change the fields directly if you know what you are doing
 //otherwise use the provided methods.
 type Model struct {
-	Obj    func(x float64) float64
-	Deriv  func(x float64) float64
-	Deriv2 func(x float64) float64
+	Obj    Function
+	deriv  Deriv
+	deriv2 Deriv2
 
 	X       float64
 	ObjX    float64
@@ -38,14 +42,16 @@ type Model struct {
 	Time time.Duration
 
 	Params Params
+	Solver Solver
 
-	callbacks []func(m *Model) Status
+	Status Status
+
+	callbacks []Callback
 }
 
-func NewModel(obj, deriv func(float64) float64) *Model {
+func NewModel(obj Function) *Model {
 	m := &Model{
-		Obj:   obj,
-		Deriv: deriv,
+		Obj: obj,
 
 		X:       math.NaN(),
 		ObjX:    math.NaN(),
@@ -66,7 +72,7 @@ func NewModel(obj, deriv func(float64) float64) *Model {
 		ObjUB:   math.NaN(),
 		DerivUB: math.NaN(),
 
-		callbacks: make([]func(m *Model) Status, 0),
+		callbacks: make([]Callback, 0),
 
 		Params: Params{
 			FunTolAbs: 1e-15,
@@ -81,9 +87,10 @@ func NewModel(obj, deriv func(float64) float64) *Model {
 	return m
 }
 
-func (m *Model) ChangeFun(obj func(float64) float64, deriv func(float64) float64) {
+func (m *Model) ChangeFun(obj Function) {
 	m.Obj = obj
-	m.Deriv = deriv
+	m.deriv = nil
+	m.deriv2 = nil
 
 	m.ObjX = math.NaN()
 	m.DerivX = math.NaN()
@@ -157,7 +164,7 @@ func (m *Model) SetUB(ubs ...float64) {
 	}
 }
 
-func (m *Model) AddCallback(cb func(m *Model) Status) {
+func (m *Model) AddCallback(cb Callback) {
 	m.callbacks = append(m.callbacks, cb)
 }
 
@@ -168,7 +175,7 @@ func (m *Model) ClearCallbacks() {
 func (m *Model) doCallbacks() Status {
 	var status Status
 	for _, cb := range m.callbacks {
-		st := cb(m)
+		st := cb.Update(m)
 		if st != 0 {
 			status = st
 		}
@@ -205,14 +212,30 @@ func (m *Model) checkConvergence() Status {
 	return NotTerminated
 }
 
-func (m *Model) init() {
-	m.initialDeriv = m.DerivX
+func (m *Model) init(useDeriv, useDeriv2 bool) {
 	m.initialTime = time.Now()
 	m.initialInterval = m.UB - m.LB
 	if math.IsInf(m.initialInterval, 1) {
 		m.initialInterval = 0
 	}
 	m.Iter = 0
+
+	if math.IsNaN(m.X) || m.X <= m.LB || m.X >= m.UB {
+		if math.IsInf(m.UB, 1) {
+			m.X = m.LB + 1
+		} else {
+			m.X = (m.LB + m.UB) / 2
+		}
+
+	}
+	if useDeriv {
+		m.deriv = m.Obj.(Deriv)
+		m.ObjX, m.DerivX = m.deriv.ValDeriv(m.X)
+		m.initialDeriv = m.DerivX
+	}
+	if useDeriv2 {
+		m.deriv2 = m.Obj.(Deriv2)
+	}
 }
 
 func (m *Model) update() Status {

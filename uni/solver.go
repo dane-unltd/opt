@@ -1,5 +1,5 @@
 package uni
 
 type Solver interface {
-	Solve(m *Model) Status
+	Solve(m *Model)
 }

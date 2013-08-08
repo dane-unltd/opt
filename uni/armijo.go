@@ -12,8 +12,8 @@ func NewArmijo() *Armijo {
 	return &Armijo{}
 }
 
-func (s *Armijo) Solve(m *Model) Status {
-	var status Status
+func (s *Armijo) Solve(m *Model) {
+	m.init(false, false)
 
 	beta := 0.5
 	sigma := 0.2
@@ -22,37 +22,28 @@ func (s *Armijo) Solve(m *Model) Status {
 	maxStep := m.UB - m.LB
 
 	if math.IsNaN(m.DerivLB) {
-		m.DerivLB = m.Deriv(m.LB)
+		panic("have to set derivation of lower bound for Armijo")
 	}
 	if math.IsNaN(m.ObjLB) {
-		m.ObjLB = m.Obj(m.LB)
-	}
-	if math.IsNaN(step) || step <= 0 || step > maxStep {
-		if math.IsInf(m.UB, 1) {
-			step = 1
-		} else {
-			step = maxStep
-		}
+		m.ObjLB = m.Obj.Val(m.LB)
 	}
 
 	if m.DerivLB > 0 {
-		status = Fail
-		return status
+		m.Status = Fail
+		return
 	}
 
 	m.X = m.LB + step
-	m.ObjX = m.Obj(m.X)
-
-	m.init()
+	m.ObjX = m.Obj.Val(m.X)
 
 	if m.ObjX-m.ObjLB > sigma*m.DerivLB*step {
 		fPrev := m.ObjX
 		step *= beta
 		for {
 			m.X = m.LB + step
-			m.ObjX = m.Obj(m.X)
+			m.ObjX = m.Obj.Val(m.X)
 
-			if status = m.update(); status != 0 {
+			if m.Status = m.update(); m.Status != 0 {
 				break
 			}
 
@@ -70,7 +61,7 @@ func (s *Armijo) Solve(m *Model) Status {
 	} else {
 		fPrev := m.ObjX
 		if step == maxStep {
-			goto done
+			return
 		}
 		step /= beta
 		if step > maxStep {
@@ -78,8 +69,8 @@ func (s *Armijo) Solve(m *Model) Status {
 		}
 		for {
 			m.X = m.LB + step
-			m.ObjX = m.Obj(m.X)
-			if status = m.update(); status != 0 {
+			m.ObjX = m.Obj.Val(m.X)
+			if m.Status = m.update(); m.Status != 0 {
 				break
 			}
 
@@ -93,7 +84,7 @@ func (s *Armijo) Solve(m *Model) Status {
 			}
 			fPrev = m.ObjX
 			if step == maxStep {
-				goto done
+				return
 			}
 			step /= beta
 			if step > maxStep {
@@ -101,8 +92,4 @@ func (s *Armijo) Solve(m *Model) Status {
 			}
 		}
 	}
-
-done:
-
-	return status
 }

@@ -6,6 +6,10 @@ import (
 	"time"
 )
 
+type Callback interface {
+	Update(m *Model) Status
+}
+
 //Describes a multi-variate optimization problem.
 //The solvers in this package place the results in the different fields.
 type Model struct {
@@ -36,7 +40,7 @@ type Model struct {
 	oldX    mat.Vec
 	oldObjX float64
 
-	callbacks []func(m *Model) Status
+	callbacks []Callback
 }
 
 func NewModel(n int, obj Function) *Model {
@@ -44,7 +48,7 @@ func NewModel(n int, obj Function) *Model {
 	m.Obj = obj
 	m.N = n
 	m.ObjX = math.NaN()
-	m.callbacks = make([]func(m *Model) Status, 0)
+	m.callbacks = make([]Callback, 0)
 	m.initialGradNorm = math.NaN()
 	m.gradNorm = math.NaN()
 	m.Params = Params{
@@ -87,7 +91,7 @@ func (m *Model) AddVar(x float64) {
 	m.GradX = nil
 }
 
-func (m *Model) AddCallback(cb func(m *Model) Status) {
+func (m *Model) AddCallback(cb Callback) {
 	m.callbacks = append(m.callbacks, cb)
 }
 
@@ -98,7 +102,7 @@ func (m *Model) ClearCallbacks() {
 func (m *Model) doCallbacks() Status {
 	var status Status
 	for _, cb := range m.callbacks {
-		st := cb(m)
+		st := cb.Update(m)
 		if st != 0 {
 			status = st
 		}

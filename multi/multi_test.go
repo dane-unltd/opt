@@ -18,22 +18,29 @@ var cops struct {
 	clapack.Lapack
 }
 
-func ExampleModel(t *testing.T) {
+func init() {
 	mat.Register(cops)
+}
 
+func TestExampleModel(t *testing.T) {
 	//badly conditioned Hessian leads to zig-zagging of the steepest descent
 	//algorithm
 	condNo := 100.0
+	optSol := mat.Vec{1, 2}
 
 	A := mat.NewFromArray([]float64{condNo, 0, 0, 1}, true, 2, 2)
+	b := mat.Vec{-2 * optSol[0] * condNo, -2 * optSol[1]}
+	c := -0.5 * mat.Dot(b, optSol)
 
 	//Create new 2-dimensional model.
-	mdl := NewModel(2, opt.NewQuadratic(A, mat.NewVec(2), 0))
+	mdl := NewModel(2, opt.NewQuadratic(A, b, c))
 
 	//Register an event handler, that gets called when the model changes,
 	//which is basically in every iteration of the solver.
 	//Here we use the Display type to display progress in every iteration.
-	mdl.AddCallback(NewDisplay(1).Update)
+	mdl.AddCallback(NewDisplay(1))
+
+	mdl.Params.IterMax = 5
 
 	//Use steepest descent solver to solve the model
 	solver := NewSteepestDescent()
@@ -69,7 +76,7 @@ func TestQuadratic(t *testing.T) {
 	c := bTmp.Nrm2Sq()
 
 	m1 := NewModel(n, opt.NewQuadratic(AtA, b, c))
-	m1.AddCallback(NewDisplay(n).Update)
+	m1.AddCallback(NewDisplay(n))
 
 	solver := NewSteepestDescent()
 	solver.Solve(m1)
@@ -79,7 +86,7 @@ func TestQuadratic(t *testing.T) {
 	solver.LineSearch = uni.NewQuadratic(false)
 
 	m2 := NewModel(n, opt.NewQuadratic(AtA, b, c))
-	m2.AddCallback(NewDisplay(n).Update)
+	m2.AddCallback(NewDisplay(n))
 
 	solver.Solve(m2)
 
@@ -88,7 +95,7 @@ func TestQuadratic(t *testing.T) {
 	solver2 := NewLBFGS()
 
 	m3 := NewModel(n, opt.NewQuadratic(AtA, b, c))
-	m3.AddCallback(NewDisplay(n / 10).Update)
+	m3.AddCallback(NewDisplay(n / 10))
 
 	solver2.Solve(m3)
 
@@ -99,7 +106,7 @@ func TestQuadratic(t *testing.T) {
 
 	m4 := NewModel(n, opt.NewQuadratic(AtA, b, c))
 	m4.Proj = opt.RealPlus{}
-	m4.AddCallback(NewDisplay(n).Update)
+	m4.AddCallback(NewDisplay(n))
 
 	solver3.Solve(m4)
 
@@ -135,7 +142,7 @@ func TestRosenbrock(t *testing.T) {
 
 	m1 := NewModel(n, opt.Rosenbrock{})
 	m1.SetX(xInit, true)
-	m1.AddCallback(NewDisplay(1000).Update)
+	m1.AddCallback(NewDisplay(1000))
 	m1.Params.IterMax = 100000
 	solver := NewSteepestDescent()
 
@@ -150,11 +157,11 @@ func TestRosenbrock(t *testing.T) {
 
 	//Example on how to use a callback to display information
 	//Here we could plug in something more sophisticated
-	m2.AddCallback(NewDisplay(1000).Update)
+	m2.AddCallback(NewDisplay(1000))
 
 	//Registering a history which stores time and objective values
-	hist := History{T: make([]time.Duration, 0), Obj: make([]float64, 0)}
-	m2.AddCallback(hist.Update)
+	hist := &History{T: make([]time.Duration, 0), Obj: make([]float64, 0)}
+	m2.AddCallback(hist)
 
 	solver.Solve(m2)
 	t.Log(m2.ObjX, m2.Iter, m2.Status)
@@ -163,13 +170,13 @@ func TestRosenbrock(t *testing.T) {
 
 	m3 := NewModel(n, opt.Rosenbrock{})
 	m3.SetX(xInit, true)
-	m3.AddCallback(NewDisplay(10).Update)
+	m3.AddCallback(NewDisplay(10))
 	solver2.Solve(m3)
 	t.Log(m3.ObjX, m3.Iter, m3.Status)
 
 	m4 := NewModel(n, opt.Rosenbrock{})
 	m4.SetX(xInit, true)
-	m4.AddCallback(NewDisplay(10).Update)
+	m4.AddCallback(NewDisplay(10))
 	solver2.LineSearch = uni.NewQuadratic(false)
 	solver2.Solve(m4)
 	t.Log(m4.ObjX, m4.Iter, m4.Status)
@@ -197,7 +204,7 @@ func TestSolve(t *testing.T) {
 
 	xInit := mat.RandVec(10).Scal(10.0)
 
-	mdl := Solve(opt.Rosenbrock{}, xInit)
+	mdl := Solve(opt.Rosenbrock{}, xInit, nil, NewDisplay(5))
 
 	if math.Abs(mdl.ObjX) > 0.1 {
 		t.Log(mdl.ObjX)

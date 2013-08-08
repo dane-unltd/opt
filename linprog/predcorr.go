@@ -13,8 +13,7 @@ func NewPredCorr() *PredCorr {
 }
 
 //Predictor-Corrector Interior Point implementation
-func (sol *PredCorr) Solve(mdl *Model) Status {
-	var status Status
+func (sol *PredCorr) Solve(mdl *Model) {
 
 	A := mdl.A
 
@@ -61,7 +60,7 @@ func (sol *PredCorr) Solve(mdl *Model) Status {
 	mdl.init()
 	for {
 
-		if status = mdl.update(); status != 0 {
+		if mdl.Status = mdl.update(); mdl.Status != 0 {
 			break
 		}
 		mu = mdl.Rs.Asum() / float64(n)
@@ -174,6 +173,4 @@ func (sol *PredCorr) Solve(mdl *Model) Status {
 		y.Axpy(alpha, dy)
 		s.Axpy(alpha, ds)
 	}
-
-	return status
 }

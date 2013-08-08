@@ -44,14 +44,7 @@ func (sol LBFGS) Solve(m *Model) {
 	betas := mat.NewVec(sol.Mem)
 	rhos := mat.NewVec(sol.Mem)
 
-	xTemp := mat.NewVec(m.N)
-
-	lineFun := func(step float64) float64 {
-		xTemp.Copy(m.X)
-		xTemp.Axpy(step, d)
-		return m.Obj.Val(xTemp)
-	}
-	mls := uni.NewModel(lineFun, nil)
+	mls := uni.NewModel(NewLineFuncDeriv(m.grad, m.X, d))
 
 	for {
 
@@ -93,18 +86,18 @@ func (sol LBFGS) Solve(m *Model) {
 		mls.SetX(stepSize)
 		mls.SetLB(0, m.ObjX, gLin)
 		mls.SetUB()
-		lsStatus := sol.LineSearch.Solve(mls)
-		if lsStatus < 0 {
-			fmt.Println("Linesearch:", lsStatus)
+		sol.LineSearch.Solve(mls)
+		if mls.Status < 0 {
+			fmt.Println("Linesearch:", mls.Status)
 			d.Copy(m.GradX)
 			d.Scal(-1)
 			mls.SetX(stepSize)
 			mls.SetLB(0, m.ObjX, -m.GradX.Nrm2Sq())
 			mls.SetUB()
-			lsStatus = sol.LineSearch.Solve(mls)
-			if lsStatus < 0 {
-				fmt.Println("Linesearch:", lsStatus)
-				m.Status = Status(lsStatus)
+			sol.LineSearch.Solve(mls)
+			if mls.Status < 0 {
+				fmt.Println("Linesearch:", mls.Status)
+				m.Status = Status(mls.Status)
 
 				break
 			}
