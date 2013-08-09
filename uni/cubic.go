@@ -26,12 +26,6 @@ func (sol *Cubic) Solve(m *Model) {
 		return
 	}
 
-	sigma := 0.2
-
-	x0 := m.LB
-	f0 := m.ObjLB
-	d0 := m.DerivLB
-
 	//search for upper bound
 	for math.IsInf(m.UB, 1) {
 		if m.DerivX > 0 {
@@ -39,7 +33,7 @@ func (sol *Cubic) Solve(m *Model) {
 			m.ObjUB = m.ObjX
 			m.DerivUB = m.DerivX
 		} else {
-			if m.ObjX-f0 > sigma*d0*(m.X-x0) {
+			if m.ObjX-m.f0 > m.Params.Armijo*m.d0*(m.X-m.x0) {
 				m.UB = m.X
 				m.ObjUB = m.ObjX
 				m.DerivUB = m.DerivX
@@ -77,7 +71,7 @@ func (sol *Cubic) Solve(m *Model) {
 			m.ObjUB = m.ObjX
 			m.DerivUB = m.DerivX
 		} else {
-			if m.ObjX-f0 > sigma*d0*(m.X-x0) {
+			if m.ObjX-m.f0 > m.Params.Armijo*m.d0*(m.X-m.x0) {
 				m.UB = m.X
 				m.ObjUB = m.ObjX
 				m.DerivUB = m.DerivX
