@@ -14,13 +14,6 @@ func NewCubic() *Cubic {
 func (sol *Cubic) Solve(m *Model) {
 	m.init(true, false)
 
-	if math.IsNaN(m.DerivLB) {
-		m.ObjLB, m.DerivLB = m.deriv.ValDeriv(m.LB)
-	}
-	if math.IsNaN(m.ObjLB) {
-		m.ObjLB = m.Obj.Val(m.LB)
-	}
-
 	if m.DerivLB > 0 {
 		m.Status = Fail
 		return
