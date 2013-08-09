@@ -144,6 +144,7 @@ func (m *Model) init(useG, useH bool) {
 	m.oldX = mat.NewVec(m.N).Scal(math.NaN())
 	m.temp = mat.NewVec(m.N).Scal(math.NaN())
 	m.Iter = 0
+	m.Status = 0
 
 	if m.X == nil {
 		m.X = mat.NewVec(m.N)

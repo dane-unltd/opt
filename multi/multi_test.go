@@ -181,6 +181,14 @@ func TestRosenbrock(t *testing.T) {
 	solver2.Solve(m4)
 	t.Log(m4.ObjX, m4.Iter, m4.Status)
 
+	m5 := NewModel(n, opt.Rosenbrock{})
+	m5.SetX(xInit, true)
+	m5.AddCallback(NewDisplay(10))
+	m5.Params.IterMax = 1000
+	solver2.LineSearch = uni.NewCubic()
+	solver2.Solve(m5)
+	t.Log(m5.ObjX, m5.Iter, m5.Status)
+
 	if math.Abs(m1.ObjX) > 0.1 {
 		t.Log(m1.ObjX)
 		t.Fail()
@@ -195,6 +203,10 @@ func TestRosenbrock(t *testing.T) {
 	}
 	if math.Abs(m4.ObjX) > 0.1 {
 		t.Log(m4.ObjX)
+		t.Fail()
+	}
+	if math.Abs(m5.ObjX) > 0.1 {
+		t.Log(m5.ObjX)
 		t.Fail()
 	}
 }

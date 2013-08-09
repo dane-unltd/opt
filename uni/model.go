@@ -26,7 +26,8 @@ type Model struct {
 	oldObjX   float64
 	oldDerivX float64
 
-	initialDeriv    float64
+	x0, f0, d0 float64
+
 	initialInterval float64
 	initialTime     time.Time
 
@@ -61,7 +62,10 @@ func NewModel(obj Function) *Model {
 		oldX:    math.NaN(),
 		oldObjX: math.NaN(),
 
-		initialDeriv:    math.NaN(),
+		x0: math.NaN(),
+		f0: math.NaN(),
+		d0: math.NaN(),
+
 		initialInterval: math.Inf(1),
 
 		LB:      0,
@@ -79,6 +83,10 @@ func NewModel(obj Function) *Model {
 			FunTolRel: 1e-15,
 			XTolAbs:   1e-6,
 			XTolRel:   1e-2,
+
+			Inexact:   true,
+			Armijo:    0.2,
+			Curvature: 0.9,
 
 			IterMax: 1000,
 			TimeMax: time.Second,
@@ -184,6 +192,12 @@ func (m *Model) doCallbacks() Status {
 }
 
 func (m *Model) checkConvergence() Status {
+	if m.Params.Inexact {
+		if math.Abs(m.DerivX/m.d0) < m.Params.Curvature &&
+			m.ObjX-m.f0 < m.Params.Armijo*(m.X-m.x0)*m.d0 {
+			return WolfeConv
+		}
+	}
 	if math.Abs(m.UB-m.LB) < m.Params.XTolAbs {
 		return XAbsConv
 	}
@@ -193,7 +207,7 @@ func (m *Model) checkConvergence() Status {
 	if math.Abs(m.DerivX) < m.Params.FunTolAbs {
 		return DerivAbsConv
 	}
-	if math.Abs(m.DerivX/m.initialDeriv) < m.Params.FunTolRel {
+	if math.Abs(m.DerivX/m.d0) < m.Params.FunTolRel {
 		return DerivRelConv
 	}
 	if math.Abs(m.ObjX-m.oldObjX) < m.Params.FunTolAbs {
@@ -219,6 +233,7 @@ func (m *Model) init(useDeriv, useDeriv2 bool) {
 		m.initialInterval = 0
 	}
 	m.Iter = 0
+	m.Status = 0
 
 	if math.IsNaN(m.X) || m.X <= m.LB || m.X >= m.UB {
 		if math.IsInf(m.UB, 1) {
@@ -231,11 +246,20 @@ func (m *Model) init(useDeriv, useDeriv2 bool) {
 	if useDeriv {
 		m.deriv = m.Obj.(Deriv)
 		m.ObjX, m.DerivX = m.deriv.ValDeriv(m.X)
-		m.initialDeriv = m.DerivX
+		if math.IsNaN(m.DerivLB) {
+			m.ObjLB, m.DerivLB = m.deriv.ValDeriv(m.LB)
+		}
 	}
 	if useDeriv2 {
 		m.deriv2 = m.Obj.(Deriv2)
 	}
+
+	if math.IsNaN(m.ObjLB) {
+		m.ObjLB = m.Obj.Val(m.LB)
+	}
+	m.x0 = m.LB
+	m.f0 = m.ObjLB
+	m.d0 = m.DerivLB
 }
 
 func (m *Model) update() Status {

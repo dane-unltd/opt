@@ -9,6 +9,10 @@ type Params struct {
 	XTolAbs   float64
 	XTolRel   float64
 
+	Inexact   bool
+	Armijo    float64
+	Curvature float64
+
 	IterMax int
 	TimeMax time.Duration
 }

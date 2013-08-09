@@ -62,4 +62,16 @@ func TestUni(t *testing.T) {
 	if mdl.ObjX >= mdl.ObjLB {
 		t.Fail()
 	}
+
+	mdl = NewModel(fun)
+	mdl.Params.IterMax = 10
+	mdl.Params.Inexact = false
+	NewCubic().Solve(mdl)
+
+	t.Log(mdl.LB, mdl.X, mdl.UB, mdl.Status)
+	t.Log(mdl.ObjX - fun.OptVal())
+	t.Log(mdl.Iter, mdl.Status)
+	if math.Abs(mdl.X-fun.OptLoc()) > 0.01 {
+		t.Fail()
+	}
 }

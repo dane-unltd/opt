@@ -14,7 +14,9 @@ const (
 	XAbsConv = 5
 	XRelConv = 6
 
-	Success = 7
+	WolfeConv = 7
+
+	Success = 8
 
 	IterLimit = -1
 	TimeLimit = -2

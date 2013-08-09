@@ -16,16 +16,12 @@ func (s *Armijo) Solve(m *Model) {
 	m.init(false, false)
 
 	beta := 0.5
-	sigma := 0.2
 
 	step := m.X - m.LB
 	maxStep := m.UB - m.LB
 
 	if math.IsNaN(m.DerivLB) {
 		panic("have to set derivation of lower bound for Armijo")
-	}
-	if math.IsNaN(m.ObjLB) {
-		m.ObjLB = m.Obj.Val(m.LB)
 	}
 
 	if m.DerivLB > 0 {
@@ -36,7 +32,7 @@ func (s *Armijo) Solve(m *Model) {
 	m.X = m.LB + step
 	m.ObjX = m.Obj.Val(m.X)
 
-	if m.ObjX-m.ObjLB > sigma*m.DerivLB*step {
+	if m.ObjX-m.ObjLB > m.Params.Armijo*m.DerivLB*step {
 		fPrev := m.ObjX
 		step *= beta
 		for {
@@ -47,7 +43,7 @@ func (s *Armijo) Solve(m *Model) {
 				break
 			}
 
-			if m.ObjX-m.ObjLB <= sigma*m.DerivLB*step {
+			if m.ObjX-m.ObjLB <= m.Params.Armijo*m.DerivLB*step {
 				if fPrev < m.ObjX {
 					step /= beta
 					m.X = m.LB + step
@@ -74,7 +70,7 @@ func (s *Armijo) Solve(m *Model) {
 				break
 			}
 
-			if m.ObjX-m.ObjLB > sigma*m.DerivLB*step {
+			if m.ObjX-m.ObjLB > m.Params.Armijo*m.DerivLB*step {
 				if fPrev < m.ObjX {
 					step *= beta
 					m.X = m.LB + step
