@@ -39,8 +39,11 @@ type Model struct {
 	ObjUB   float64
 	DerivUB float64
 
-	Iter int
-	Time time.Duration
+	Iter        int
+	Time        time.Duration
+	FunEvals    int
+	DerivEvals  int
+	Deriv2Evals int
 
 	Params Params
 	Solver Solver
@@ -88,8 +91,9 @@ func NewModel(obj Function) *Model {
 			Armijo:    0.2,
 			Curvature: 0.9,
 
-			IterMax: 1000,
-			TimeMax: time.Second,
+			IterMax:    1000,
+			TimeMax:    time.Second,
+			FunEvalMax: 1000,
 		},
 	}
 	return m
@@ -223,6 +227,9 @@ func (m *Model) checkConvergence() Status {
 	if m.Time > m.Params.TimeMax {
 		return TimeLimit
 	}
+	if m.FunEvals > m.Params.FunEvalMax {
+		return FunEvalLimit
+	}
 	return NotTerminated
 }
 
@@ -233,7 +240,11 @@ func (m *Model) init(useDeriv, useDeriv2 bool) {
 		m.initialInterval = 0
 	}
 	m.Iter = 0
-	m.Status = 0
+	m.FunEvals = 0
+	m.DerivEvals = 0
+	m.Deriv2Evals = 0
+
+	m.Status = NotTerminated
 
 	if math.IsNaN(m.X) || m.X <= m.LB || m.X >= m.UB {
 		if math.IsInf(m.UB, 1) {
@@ -246,8 +257,12 @@ func (m *Model) init(useDeriv, useDeriv2 bool) {
 	if useDeriv {
 		m.deriv = m.Obj.(Deriv)
 		m.ObjX, m.DerivX = m.deriv.ValDeriv(m.X)
+		m.FunEvals++
+		m.DerivEvals++
 		if math.IsNaN(m.DerivLB) {
 			m.ObjLB, m.DerivLB = m.deriv.ValDeriv(m.LB)
+			m.FunEvals++
+			m.DerivEvals++
 		}
 	}
 	if useDeriv2 {
@@ -256,6 +271,7 @@ func (m *Model) init(useDeriv, useDeriv2 bool) {
 
 	if math.IsNaN(m.ObjLB) {
 		m.ObjLB = m.Obj.Val(m.LB)
+		m.FunEvals++
 	}
 	m.x0 = m.LB
 	m.f0 = m.ObjLB

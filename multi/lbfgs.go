@@ -46,8 +46,7 @@ func (sol LBFGS) Solve(m *Model) {
 
 	mls := uni.NewModel(NewLineFuncDeriv(m.grad, m.X, d))
 
-	for {
-
+	for ; m.Status == NotTerminated; m.update() {
 		d.Copy(m.GradX)
 		if m.Iter > 0 {
 			yNew.Sub(m.GradX, gOld)
@@ -79,14 +78,12 @@ func (sol LBFGS) Solve(m *Model) {
 
 		gLin = mat.Dot(d, m.GradX)
 
-		if m.Status = m.update(); m.Status != 0 {
-			break
-		}
-
 		mls.SetX(stepSize)
 		mls.SetLB(0, m.ObjX, gLin)
 		mls.SetUB()
 		sol.LineSearch.Solve(mls)
+		m.FunEvals += mls.FunEvals
+		m.GradEvals += mls.DerivEvals
 		if mls.Status < 0 {
 			fmt.Println("Linesearch:", mls.Status)
 			d.Copy(m.GradX)
@@ -95,6 +92,8 @@ func (sol LBFGS) Solve(m *Model) {
 			mls.SetLB(0, m.ObjX, -m.GradX.Nrm2Sq())
 			mls.SetUB()
 			sol.LineSearch.Solve(mls)
+			m.FunEvals += mls.FunEvals
+			m.GradEvals += mls.DerivEvals
 			if mls.Status < 0 {
 				fmt.Println("Linesearch:", mls.Status)
 				m.Status = Status(mls.Status)
@@ -109,5 +108,7 @@ func (sol LBFGS) Solve(m *Model) {
 
 		m.X.Axpy(stepSize, d)
 		m.grad.ValGrad(m.X, m.GradX)
+		m.FunEvals++
+		m.GradEvals++
 	}
 }

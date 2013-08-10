@@ -18,12 +18,13 @@ const (
 
 	Success = 8
 
-	IterLimit = -1
-	TimeLimit = -2
+	IterLimit    = -1
+	TimeLimit    = -2
+	FunEvalLimit = -3
 
-	NumericalToleranceReached = -3
+	NumericalToleranceReached = -4
 
-	Infeasible = -4
+	Infeasible = -5
 
-	Fail = -5
+	Fail = -6
 )

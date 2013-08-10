@@ -50,9 +50,11 @@ func (sol *Rosenbrock) Solve(m *Model) {
 			lf[i].Dir = 1
 			valNeg := 0.0
 			valPos := lf[i].Val(eps)
+			m.FunEvals++
 			if valPos >= m.ObjX {
 				lf[i].Dir = -1
 				valNeg = lf[i].Val(eps)
+				m.FunEvals++
 				if valNeg >= m.ObjX {
 					eps *= 0.5
 					lf[i].Dir = 1
@@ -70,6 +72,7 @@ func (sol *Rosenbrock) Solve(m *Model) {
 				mls.SetX(eps)
 			}
 			sol.LineSearch.Solve(mls)
+			m.FunEvals += mls.FunEvals
 
 			lambda[i] = lf[i].Dir * mls.X
 			m.X.Axpy(lambda[i], d[i])

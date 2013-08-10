@@ -25,8 +25,11 @@ type Model struct {
 	ObjX  float64
 	GradX mat.Vec
 
-	Iter int
-	Time time.Duration
+	Iter      int
+	Time      time.Duration
+	FunEvals  int
+	GradEvals int
+	HessEvals int
 
 	Status Status
 
@@ -58,8 +61,9 @@ func NewModel(n int, obj Function) *Model {
 		XTolAbs:   1e-6,
 		XTolRel:   1e-2,
 
-		IterMax: 1000,
-		TimeMax: time.Second,
+		IterMax:    1000,
+		TimeMax:    time.Second,
+		FunEvalMax: 1000,
 	}
 	return m
 }
@@ -136,6 +140,9 @@ func (m *Model) checkConvergence() Status {
 	if m.Time > m.Params.TimeMax {
 		return TimeLimit
 	}
+	if m.FunEvals > m.Params.FunEvalMax {
+		return FunEvalLimit
+	}
 	return NotTerminated
 }
 
@@ -144,6 +151,9 @@ func (m *Model) init(useG, useH bool) {
 	m.oldX = mat.NewVec(m.N).Scal(math.NaN())
 	m.temp = mat.NewVec(m.N).Scal(math.NaN())
 	m.Iter = 0
+	m.FunEvals = 0
+	m.GradEvals = 0
+	m.HessEvals = 0
 	m.Status = 0
 
 	if m.X == nil {
@@ -154,11 +164,14 @@ func (m *Model) init(useG, useH bool) {
 	}
 	if math.IsNaN(m.ObjX) {
 		m.ObjX = m.Obj.Val(m.X)
+		m.FunEvals++
 	}
 	if useG {
 		m.grad = m.Obj.(Grad)
 		m.GradX = mat.NewVec(m.N)
 		m.grad.ValGrad(m.X, m.GradX)
+		m.FunEvals++
+		m.GradEvals++
 		m.initialGradNorm = m.GradX.Nrm2()
 	} else {
 		m.GradX = nil
@@ -174,15 +187,17 @@ func (m *Model) update() Status {
 		m.gradNorm = m.GradX.Nrm2()
 	}
 	if status := m.doCallbacks(); status != 0 {
-		return status
+		m.Status = status
+		return m.Status
 	}
 	if status := m.checkConvergence(); status != 0 {
-		return status
+		m.Status = status
+		return m.Status
 	}
 
 	m.oldX.Copy(m.X)
 	m.oldObjX = m.ObjX
 	m.Iter++
 
-	return NotTerminated
+	return 0
 }

@@ -31,6 +31,7 @@ func (s *Armijo) Solve(m *Model) {
 
 	m.X = m.LB + step
 	m.ObjX = m.Obj.Val(m.X)
+	m.FunEvals++
 
 	if m.ObjX-m.ObjLB > m.Params.Armijo*m.DerivLB*step {
 		fPrev := m.ObjX
@@ -38,6 +39,7 @@ func (s *Armijo) Solve(m *Model) {
 		for {
 			m.X = m.LB + step
 			m.ObjX = m.Obj.Val(m.X)
+			m.FunEvals++
 
 			if m.Status = m.update(); m.Status != 0 {
 				break
@@ -66,6 +68,7 @@ func (s *Armijo) Solve(m *Model) {
 		for {
 			m.X = m.LB + step
 			m.ObjX = m.Obj.Val(m.X)
+			m.FunEvals++
 			if m.Status = m.update(); m.Status != 0 {
 				break
 			}

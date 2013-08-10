@@ -14,6 +14,8 @@ func NewCubic() *Cubic {
 func (sol *Cubic) Solve(m *Model) {
 	m.init(true, false)
 
+	eps := 0.4 * m.Params.XTolAbs
+
 	if m.DerivLB > 0 {
 		m.Status = Fail
 		return
@@ -38,11 +40,20 @@ func (sol *Cubic) Solve(m *Model) {
 
 				m.X += 2 * (m.X - lb)
 				m.ObjX, m.DerivX = m.deriv.ValDeriv(m.X)
+				m.FunEvals++
+				m.DerivEvals++
 				if m.Status = m.update(); m.Status != 0 {
 					return
 				}
 			}
 		}
+	}
+
+	if eps == 0 {
+		eps = m.Params.XTolRel * (m.UB - m.LB)
+	}
+	if eps == 0 {
+		eps = 1e-3 * (m.UB - m.LB)
 	}
 
 	for {
@@ -56,8 +67,16 @@ func (sol *Cubic) Solve(m *Model) {
 		if !(m.X > m.LB && m.X < m.UB) {
 			m.X = (m.UB + m.LB) / 2
 		}
+		if (m.X - m.LB) < eps {
+			m.X = m.LB + eps
+		}
+		if (m.UB - m.X) < eps {
+			m.X = m.UB - eps
+		}
 
 		m.ObjX, m.DerivX = m.deriv.ValDeriv(m.X)
+		m.FunEvals++
+		m.DerivEvals++
 
 		if m.DerivX > 0 {
 			m.UB = m.X

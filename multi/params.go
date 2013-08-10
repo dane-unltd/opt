@@ -9,8 +9,9 @@ type Params struct {
 	XTolAbs   float64
 	XTolRel   float64
 
-	IterMax int
-	TimeMax time.Duration
+	IterMax    int
+	TimeMax    time.Duration
+	FunEvalMax int
 }
 
 func NewParams() *Params {
@@ -20,7 +21,8 @@ func NewParams() *Params {
 		XTolAbs:   1e-6,
 		XTolRel:   1e-2,
 
-		IterMax: 1000,
-		TimeMax: time.Minute,
+		IterMax:    1000,
+		TimeMax:    time.Minute,
+		FunEvalMax: 1000,
 	}
 }

@@ -144,6 +144,7 @@ func TestRosenbrock(t *testing.T) {
 	m1.SetX(xInit, true)
 	m1.AddCallback(NewDisplay(1000))
 	m1.Params.IterMax = 100000
+	m1.Params.FunEvalMax = 100000
 	solver := NewSteepestDescent()
 
 	solver.Solve(m1)
@@ -154,6 +155,7 @@ func TestRosenbrock(t *testing.T) {
 	m2 := NewModel(n, opt.Rosenbrock{})
 	m2.SetX(xInit, true)
 	m2.Params.IterMax = 100000
+	m2.Params.FunEvalMax = 100000
 
 	//Example on how to use a callback to display information
 	//Here we could plug in something more sophisticated
@@ -239,7 +241,7 @@ func TestSolve(t *testing.T) {
 	params := NewParams()
 	params.IterMax = 100000
 
-	mdl = SolveProjected(opt.Rosenbrock{}, opt.RealPlus{}, xInit,
+	mdl = SolveGradProjected(opt.Rosenbrock{}, opt.RealPlus{}, xInit,
 		params, NewDisplay(1000))
 	t.Log(mdl.Status, mdl.ObjX, mdl.Iter)
 
@@ -247,11 +249,11 @@ func TestSolve(t *testing.T) {
 	params.XTolRel = 0
 	params.FunTolRel = 0
 	params.FunTolAbs = 0
-	params.IterMax = 100000
-	mdl = Solve(rb{}, xInit, params, NewDisplay(10))
+	params.FunEvalMax = 100000
+	mdl = Solve(rb{}, xInit, params, NewDisplay(1))
 	t.Log(mdl.Status, mdl.ObjX, mdl.Iter, mdl.X)
 
 	xInit = mat.Vec{0, 3}
-	mdl = Solve(rosTest{}, xInit, params, NewDisplay(10))
+	mdl = Solve(rosTest{}, xInit, params, NewDisplay(1))
 	t.Log(mdl.Status, mdl.ObjX, mdl.Iter)
 }

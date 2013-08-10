@@ -13,6 +13,7 @@ type Params struct {
 	Armijo    float64
 	Curvature float64
 
-	IterMax int
-	TimeMax time.Duration
+	IterMax    int
+	TimeMax    time.Duration
+	FunEvalMax int
 }

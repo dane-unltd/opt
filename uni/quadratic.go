@@ -20,6 +20,7 @@ func (sol *Quadratic) Solve(m *Model) {
 
 	if math.IsNaN(m.ObjLB) {
 		m.ObjLB = m.Obj.Val(m.LB)
+		m.FunEvals++
 	}
 
 	fNew := 0.0
@@ -37,9 +38,11 @@ func (sol *Quadratic) Solve(m *Model) {
 		if math.IsNaN(xNew) {
 			xNew = 1
 			fNew = m.Obj.Val(xNew)
+			m.FunEvals++
 		}
 		if math.IsNaN(fNew) {
 			fNew = m.Obj.Val(xNew)
+			m.FunEvals++
 		}
 
 		step := m.X - m.LB
@@ -49,6 +52,7 @@ func (sol *Quadratic) Solve(m *Model) {
 
 			m.UB = m.X + step
 			m.ObjUB = m.Obj.Val(m.UB)
+			m.FunEvals++
 			for m.ObjUB <= m.ObjX {
 				m.LB = m.X
 				m.ObjLB = m.ObjX
@@ -59,6 +63,7 @@ func (sol *Quadratic) Solve(m *Model) {
 				step *= 2
 				m.UB = m.X + step
 				m.ObjUB = m.Obj.Val(m.UB)
+				m.FunEvals++
 
 				if m.Status = m.update(); m.Status != 0 {
 					return
@@ -72,6 +77,7 @@ func (sol *Quadratic) Solve(m *Model) {
 
 			m.X = m.LB + step
 			m.ObjX = m.Obj.Val(m.X)
+			m.FunEvals++
 			for m.ObjX >= m.ObjLB {
 				m.UB = m.X
 				m.ObjUB = m.ObjX
@@ -79,6 +85,7 @@ func (sol *Quadratic) Solve(m *Model) {
 				step *= 0.5
 				m.X = m.LB + step
 				m.ObjX = m.Obj.Val(m.X)
+				m.FunEvals++
 
 				if m.Status = m.update(); m.Status != 0 {
 					return
@@ -94,10 +101,12 @@ func (sol *Quadratic) Solve(m *Model) {
 		m.ObjUB = m.ObjUB
 		if math.IsNaN(m.ObjUB) {
 			m.ObjUB = m.Obj.Val(m.UB)
+			m.FunEvals++
 		}
 		if m.ObjUB < m.ObjLB {
 			m.X = m.UB - eps
 			m.ObjX = m.Obj.Val(m.X)
+			m.FunEvals++
 			if m.ObjX >= m.ObjUB {
 				m.X = m.UB
 				m.ObjX = m.ObjUB
@@ -107,9 +116,11 @@ func (sol *Quadratic) Solve(m *Model) {
 		} else {
 			m.X = 0.5 * m.UB
 			m.ObjX = m.Obj.Val(m.X)
+			m.FunEvals++
 			for m.ObjX >= m.ObjLB {
 				m.X *= 0.5
 				m.ObjX = m.Obj.Val(m.X)
+				m.FunEvals++
 
 				if m.Status = m.update(); m.Status != 0 {
 					return
@@ -146,6 +157,7 @@ func (sol *Quadratic) Solve(m *Model) {
 		}
 
 		fNew = m.Obj.Val(xNew)
+		m.FunEvals++
 
 		if !(xNew > m.LB && xNew < m.UB) || (xNew < m.X && fNew > m.ObjLB) ||
 			(xNew > m.X && fNew > m.ObjUB) {
@@ -155,6 +167,7 @@ func (sol *Quadratic) Solve(m *Model) {
 				xNew = (m.X + m.LB) / 2
 			}
 			fNew = m.Obj.Val(xNew)
+			m.FunEvals++
 		}
 
 		if xNew > m.X {

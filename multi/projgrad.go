@@ -52,11 +52,15 @@ func (sol *ProjGrad) Solve(m *Model) {
 			break
 		}
 		s, m.ObjX = mls.X, mls.ObjX
+		m.FunEvals += mls.FunEvals
+		m.GradEvals += mls.DerivEvals
 
 		m.X.Axpy(s, d)
 		m.Proj.Project(m.X)
 
 		m.grad.ValGrad(m.X, m.GradX)
+		m.FunEvals++
+		m.GradEvals++
 		d.Copy(m.GradX)
 		d.Scal(-1)
 
