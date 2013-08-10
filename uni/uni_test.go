@@ -46,9 +46,10 @@ func TestUni(t *testing.T) {
 	mdl.Params.FunTolRel = 0
 	NewQuadratic(false).Solve(mdl)
 
+	t.Log("Quadratic")
 	t.Log(mdl.LB, mdl.X, mdl.UB, mdl.Status)
 	t.Log(mdl.ObjX - fun.OptVal())
-	t.Log(mdl.Iter)
+	t.Log(mdl.FunEvals)
 
 	if math.Abs(mdl.X-fun.OptLoc()) > 0.01 {
 		t.Fail()
@@ -57,6 +58,7 @@ func TestUni(t *testing.T) {
 	mdl = NewModel(fun)
 	mdl.ObjLB, mdl.DerivLB = fun.ValDeriv(mdl.LB)
 	NewArmijo().Solve(mdl)
+	t.Log("Armijo")
 	t.Log(mdl.X)
 
 	if mdl.ObjX >= mdl.ObjLB {
@@ -68,9 +70,10 @@ func TestUni(t *testing.T) {
 	mdl.Params.Inexact = false
 	NewCubic().Solve(mdl)
 
+	t.Log("Cubic")
 	t.Log(mdl.LB, mdl.X, mdl.UB, mdl.Status)
 	t.Log(mdl.ObjX - fun.OptVal())
-	t.Log(mdl.Iter, mdl.Status)
+	t.Log(mdl.FunEvals, mdl.DerivEvals, mdl.Status)
 	if math.Abs(mdl.X-fun.OptLoc()) > 0.01 {
 		t.Fail()
 	}

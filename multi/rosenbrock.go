@@ -34,8 +34,8 @@ func (sol *Rosenbrock) Solve(m *Model) {
 		lf[i] = NewLineFunc(m.Obj, m.X, d[i])
 	}
 	mls := uni.NewModel(nil)
-	mls.Params.XTolAbs = m.Params.XTolAbs / float64(m.N)
-	mls.Params.XTolRel = m.Params.XTolRel / float64(m.N)
+	mls.Params.XTolAbs = m.Params.XTolAbs
+	mls.Params.XTolRel = m.Params.XTolRel
 	mls.Params.FunTolAbs = 0
 	mls.Params.FunTolRel = 0
 
