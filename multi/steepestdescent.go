@@ -16,41 +16,41 @@ func NewSteepestDescent() *SteepestDescent {
 	return s
 }
 
-func (sol *SteepestDescent) Solve(m *Model) {
+func (sol SteepestDescent) Solve(o Grad, in *Solution, p *Params, cb ...Callback) *Result {
+	r := NewResult(in)
+	obj := ObjGradWrapper{r: r, o: o}
+	r.initGrad(obj)
+	h := NewHelper(r.Solution, cb)
 
-	m.init(true, false)
-
+	n := len(r.X)
 	s := 1.0 //initial step size
-	gLin := -m.GradX.Nrm2Sq()
+	gLin := -r.GradX.Nrm2Sq()
 
-	d := mat.NewVec(m.N)
-	d.Copy(m.GradX)
+	d := mat.NewVec(n)
+	d.Copy(r.GradX)
 	d.Scal(-1)
 
-	lineFunc := NewLineFuncDeriv(m.grad, m.X, d)
+	lineFunc := NewLineFuncDeriv(obj, r.X, d)
 	lsInit := uni.NewSolution()
 	lsParams := uni.NewParams()
 
-	for ; m.Status == NotTerminated; m.update() {
+	for ; r.Status == NotTerminated; h.update(r, p) {
 		lsInit.SetX(s)
-		lsInit.SetLB(0, m.ObjX, gLin)
+		lsInit.SetLB(0, r.ObjX, gLin)
 		lsRes := sol.LineSearch.Solve(lineFunc, lsInit, lsParams)
 		if lsRes.Status < 0 {
-			m.Status = Status(lsRes.Status)
+			r.Status = Status(lsRes.Status)
 			break
 		}
-		s, m.ObjX = lsRes.X, lsRes.ObjX
-		m.FunEvals += lsRes.FunEvals
-		m.GradEvals += lsRes.DerivEvals
+		s, r.ObjX = lsRes.X, lsRes.ObjX
 
-		m.X.Axpy(s, d)
+		r.X.Axpy(s, d)
 
-		m.grad.ValGrad(m.X, m.GradX)
-		m.FunEvals++
-		m.GradEvals++
-		d.Copy(m.GradX)
+		obj.ValGrad(r.X, r.GradX)
+		d.Copy(r.GradX)
 		d.Scal(-1)
 
 		gLin = -d.Nrm2Sq()
 	}
+	return r
 }

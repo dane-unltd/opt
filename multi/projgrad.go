@@ -16,61 +16,57 @@ func NewProjGrad() *ProjGrad {
 	return s
 }
 
-func (sol *ProjGrad) Solve(m *Model) {
+func (sol ProjGrad) Solve(o Grad, proj Projection, in *Solution, p *Params, cb ...Callback) *Result {
+	r := NewResult(in)
+	obj := ObjGradWrapper{r: r, o: o}
+	r.initGrad(obj)
+	h := NewHelper(r.Solution, cb)
 
-	m.init(true, false)
-
+	n := len(r.X)
 	s := 1.0 //initial step size
 
-	d := mat.NewVec(m.N)
-	d.Copy(m.GradX)
+	d := mat.NewVec(n)
+	d.Copy(r.GradX)
 	d.Scal(-1)
 
-	xTemp := mat.NewVec(m.N)
+	xTemp := mat.NewVec(n)
 
-	xTemp.Copy(m.X)
+	xTemp.Copy(r.X)
 	xTemp.Axpy(s/2, d)
-	m.Proj.Project(xTemp)
-	xTemp.Sub(xTemp, m.X)
+	proj.Project(xTemp)
+	xTemp.Sub(xTemp, r.X)
 	xTemp.Scal(2 / s)
 
 	gLin := -xTemp.Nrm2Sq()
 
-	lineFunc := NewLineFuncProj(m.grad, m.Proj, m.X, d)
+	lineFunc := NewLineFuncProj(obj, proj, r.X, d)
 	lsInit := uni.NewSolution()
 	lsParams := uni.NewParams()
 
-	for {
-		if m.Status = m.update(); m.Status != 0 {
-			break
-		}
-
+	for ; r.Status == NotTerminated; h.update(r, p) {
 		lsInit.SetX(s)
-		lsInit.SetLB(0, m.ObjX, gLin)
+		lsInit.SetLB(0, r.ObjX, gLin)
 		lsRes := sol.LineSearch.Solve(lineFunc, lsInit, lsParams)
 		if lsRes.Status < 0 {
-			m.Status = Status(lsRes.Status)
+			r.Status = Status(lsRes.Status)
 			break
 		}
-		s, m.ObjX = lsRes.X, lsRes.ObjX
-		m.FunEvals += lsRes.FunEvals
-		m.GradEvals += lsRes.DerivEvals
+		s, r.ObjX = lsRes.X, lsRes.ObjX
 
-		m.X.Axpy(s, d)
-		m.Proj.Project(m.X)
+		r.X.Axpy(s, d)
+		proj.Project(r.X)
 
-		m.grad.ValGrad(m.X, m.GradX)
-		m.FunEvals++
-		m.GradEvals++
-		d.Copy(m.GradX)
+		obj.ValGrad(r.X, r.GradX)
+		d.Copy(r.GradX)
 		d.Scal(-1)
 
-		xTemp.Copy(m.X)
+		xTemp.Copy(r.X)
 		xTemp.Axpy(s/2, d)
-		m.Proj.Project(xTemp)
-		xTemp.Sub(xTemp, m.X)
+		proj.Project(xTemp)
+		xTemp.Sub(xTemp, r.X)
 		xTemp.Scal(2 / s)
 
 		gLin = -xTemp.Nrm2Sq()
 	}
+	return r
 }

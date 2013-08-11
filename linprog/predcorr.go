@@ -12,10 +12,22 @@ func NewPredCorr() *PredCorr {
 	return &PredCorr{}
 }
 
-//Predictor-Corrector Interior Point implementation
-func (sol *PredCorr) Solve(mdl *Model) {
+func checkKKT(r *Result, p *Params) Status {
+	if r.Rd.Asum() < p.Infeasibility &&
+		r.Rp.Asum() < p.Infeasibility &&
+		r.Rs.Asum() < p.DualityGap {
+		r.Status = Success
+		return r.Status
+	}
+	return r.Status
+}
 
-	A := mdl.A
+//Predictor-Corrector Interior Point implementation
+func (sol *PredCorr) Solve(prob *Problem, p *Params, cb ...Callback) *Result {
+	res := NewResult(prob)
+	h := NewHelper(cb)
+
+	A := prob.A
 
 	m, n := A.Dims()
 
@@ -23,12 +35,16 @@ func (sol *PredCorr) Solve(mdl *Model) {
 
 	var mu, sigma float64
 
-	mdl.X = mat.NewVec(n).AddSc(1)
-	mdl.S = mat.NewVec(n).AddSc(1)
-	mdl.Y = mat.NewVec(m)
-	x := mdl.X
-	s := mdl.S
-	y := mdl.Y
+	res.X.AddSc(1)
+	res.S.AddSc(1)
+
+	res.Rd = mat.NewVec(n)
+	res.Rp = mat.NewVec(m)
+	res.Rs = mat.NewVec(n)
+
+	x := res.X
+	s := res.S
+	y := res.Y
 
 	dx := mat.NewVec(n)
 	ds := mat.NewVec(n)
@@ -57,13 +73,21 @@ func (sol *PredCorr) Solve(mdl *Model) {
 
 	alpha := 0.0
 
-	mdl.init()
 	for {
+		res.Rd.Sub(prob.C, res.S)
+		res.Rd.AddMul(At, res.Y, -1)
+		res.Rp.Apply(A, res.X)
+		res.Rp.Sub(prob.B, res.Rp)
+		res.Rs.Mul(res.X, res.S)
+		res.Rs.Neg(res.Rs)
 
-		if mdl.Status = mdl.update(); mdl.Status != 0 {
+		if h.update(res, p); res.Status != 0 {
 			break
 		}
-		mu = mdl.Rs.Asum() / float64(n)
+		if checkKKT(res, p); res.Status != 0 {
+			break
+		}
+		mu = res.Rs.Asum() / float64(n)
 
 		//determining left hand side
 		temp.ScalCols(A, xdivs.Div(x, s))
@@ -73,10 +97,10 @@ func (sol *PredCorr) Solve(mdl *Model) {
 		lhs.Chol(triU)
 
 		//right hand side
-		nTemp1.Add(mdl.Rd, s)
+		nTemp1.Add(res.Rd, s)
 		nTemp1.Mul(nTemp1, xdivs)
 		rhs.Apply(A, nTemp1)
-		rhs.Add(rhs, mdl.Rp)
+		rhs.Add(rhs, res.Rp)
 
 		//solving for dyAff
 		soli.Trsv(triUt, rhs)
@@ -84,7 +108,7 @@ func (sol *PredCorr) Solve(mdl *Model) {
 
 		//calculating other steps (dxAff, dsAff)
 		nTemp1.Apply(At, dyAff)
-		dxAff.Sub(nTemp1, mdl.Rd)
+		dxAff.Sub(nTemp1, res.Rd)
 		dxAff.Sub(dxAff, s)
 		dxAff.Mul(dxAff, xdivs)
 
@@ -123,11 +147,11 @@ func (sol *PredCorr) Solve(mdl *Model) {
 		sigma = math.Pow(mu_aff/mu, 3)
 
 		//right hand side for predictor corrector step
-		mdl.Rs.Mul(dxAff, dsAff)
-		mdl.Rs.Neg(mdl.Rs)
-		mdl.Rs.AddSc(sigma * mu_aff)
+		res.Rs.Mul(dxAff, dsAff)
+		res.Rs.Neg(res.Rs)
+		res.Rs.AddSc(sigma * mu_aff)
 
-		nTemp1.Div(mdl.Rs, s)
+		nTemp1.Div(res.Rs, s)
 		nTemp1.Neg(nTemp1)
 
 		rhs.Apply(A, nTemp1)
@@ -139,11 +163,11 @@ func (sol *PredCorr) Solve(mdl *Model) {
 		//calculating other steps (dxAff, dsAff)
 		nTemp1.Apply(At, dyCC)
 		dxCC.Mul(nTemp1, x)
-		dxCC.Add(mdl.Rs, dxCC)
+		dxCC.Add(res.Rs, dxCC)
 		dxCC.Div(dxCC, s)
 
 		dsCC.Mul(dxCC, s)
-		dsCC.Sub(mdl.Rs, dsCC)
+		dsCC.Sub(res.Rs, dsCC)
 		dsCC.Div(dsCC, x)
 
 		dx.Add(dxAff, dxCC)
@@ -173,4 +197,5 @@ func (sol *PredCorr) Solve(mdl *Model) {
 		y.Axpy(alpha, dy)
 		s.Axpy(alpha, ds)
 	}
+	return res
 }

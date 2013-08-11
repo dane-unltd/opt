@@ -12,7 +12,7 @@ type History struct {
 	Grad []mat.Vec
 }
 
-func (h *History) Update(m *Model) Status {
+func (h *History) Update(m *Result) Status {
 	if h.T != nil {
 		h.T = append(h.T, m.Time)
 	}

@@ -16,47 +16,46 @@ func NewRosenbrock() *Rosenbrock {
 	}
 }
 
-func (sol *Rosenbrock) Solve(m *Model) {
+func (sol *Rosenbrock) Solve(o Function, in *Solution, p *Params, cb ...Callback) *Result {
+	r := NewResult(in)
+	obj := ObjWrapper{r: r, o: o}
+	r.init(obj)
+	h := NewHelper(r.Solution, cb)
+
 	eps := 1.0
+	n := len(r.X)
 
-	m.init(false, false)
-
-	d := make([]mat.Vec, m.N)
+	d := make([]mat.Vec, n)
 	for i := range d {
-		d[i] = mat.NewVec(m.N)
+		d[i] = mat.NewVec(n)
 		d[i][i] = 1
 	}
 
-	lambda := make([]float64, m.N)
+	lambda := make([]float64, n)
 
-	lf := make([]*LineFunc, m.N)
+	lf := make([]*LineFunc, n)
 	for i := range lf {
-		lf[i] = NewLineFunc(m.Obj, m.X, d[i])
+		lf[i] = NewLineFunc(obj, r.X, d[i])
 	}
 
 	lsInit := uni.NewSolution()
 	lsParams := uni.NewParams()
-	lsParams.XTolAbs = m.Params.XTolAbs
-	lsParams.XTolRel = m.Params.XTolRel
+	lsParams.XTolAbs = p.XTolAbs
+	lsParams.XTolRel = p.XTolRel
 	lsParams.FunTolAbs = 0
 	lsParams.FunTolRel = 0
 
-	for {
-		if m.Status = m.update(); m.Status != 0 {
-			return
-		}
+	for ; r.Status == NotTerminated; h.update(r, p) {
 
 		//Search in all directions
 		for i := range d {
 			lf[i].Dir = 1
 			valNeg := 0.0
 			valPos := lf[i].Val(eps)
-			m.FunEvals++
-			if valPos >= m.ObjX {
+			if valPos >= r.ObjX {
 				lf[i].Dir = -1
 				valNeg = lf[i].Val(eps)
-				m.FunEvals++
-				if valNeg >= m.ObjX {
+				if valNeg >= r.ObjX {
 					eps *= 0.5
 					lf[i].Dir = 1
 					lsInit.SetLB(-eps)
@@ -73,18 +72,17 @@ func (sol *Rosenbrock) Solve(m *Model) {
 				lsInit.SetX(eps)
 			}
 			lsRes := sol.LineSearch.Solve(lf[i], lsInit, lsParams)
-			m.FunEvals += lsRes.FunEvals
 
 			lambda[i] = lf[i].Dir * lsRes.X
-			m.X.Axpy(lambda[i], d[i])
-			m.ObjX = lsRes.ObjX
+			r.X.Axpy(lambda[i], d[i])
+			r.ObjX = lsRes.ObjX
 		}
 
 		//Find new directions
 		for i := range d {
-			if math.Abs(lambda[i]) > m.Params.XTolAbs {
+			if math.Abs(lambda[i]) > p.XTolAbs {
 				d[i].Scal(lambda[i])
-				for j := i + 1; j < m.N; j++ {
+				for j := i + 1; j < n; j++ {
 					d[i].Axpy(lambda[j], d[j])
 				}
 			}
@@ -93,10 +91,11 @@ func (sol *Rosenbrock) Solve(m *Model) {
 		//Gram-Schmidt, TODO:use QR factorization
 		for i := range d {
 			d[i].Scal(1 / d[i].Nrm2())
-			for j := i + 1; j < m.N; j++ {
+			for j := i + 1; j < n; j++ {
 				d[j].Axpy(-mat.Dot(d[i], d[j]), d[i])
 			}
 		}
 
 	}
+	return r
 }

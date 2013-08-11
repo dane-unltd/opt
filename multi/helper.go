@@ -24,9 +24,10 @@ type helper struct {
 	temp mat.Vec
 }
 
-func NewHelper(in *Solution) *helper {
+func NewHelper(in *Solution, cb []Callback) *helper {
 	h := &helper{}
 	h.initialTime = time.Now()
+	h.callbacks = cb
 
 	if in.GradX != nil {
 		h.initialGradNorm = in.GradX.Nrm2()
