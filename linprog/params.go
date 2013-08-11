@@ -10,3 +10,12 @@ type Params struct {
 	IterMax int
 	TimeMax time.Duration
 }
+
+func NewParams() *Params {
+	return &Params{
+		Infeasibility: 1e-8,
+		DualityGap:    1e-8,
+		IterMax:       1000,
+		TimeMax:       time.Minute,
+	}
+}

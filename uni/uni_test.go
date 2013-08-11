@@ -40,41 +40,42 @@ func (s SumExpStruct) OptLoc() float64 {
 
 func TestUni(t *testing.T) {
 	fun := SumExpStruct{}
-	mdl := NewModel(fun)
-	mdl.SetX(0.5)
-	mdl.Params.FunTolAbs = 0
-	mdl.Params.FunTolRel = 0
-	NewQuadratic(false).Solve(mdl)
 
-	t.Log("Quadratic")
-	t.Log(mdl.LB, mdl.X, mdl.UB, mdl.Status)
-	t.Log(mdl.ObjX - fun.OptVal())
-	t.Log(mdl.FunEvals)
+	p := NewParams()
+	p.FunTolAbs = 0
+	p.FunTolRel = 0
 
-	if math.Abs(mdl.X-fun.OptLoc()) > 0.01 {
+	in := NewSolution()
+	in.SetX(0.5)
+	in.ObjLB, in.DerivLB = fun.ValDeriv(in.LB)
+
+	t.Log(fun, in, p)
+	r := NewQuadratic().Solve(fun, in, p)
+
+	t.Log(r.LB, r.X, r.UB, r.Status)
+	t.Log(r.ObjX - fun.OptVal())
+	t.Log(r.FunEvals, r.Status)
+
+	if math.Abs(r.X-fun.OptLoc()) > 0.01 {
 		t.Fail()
 	}
 
-	mdl = NewModel(fun)
-	mdl.ObjLB, mdl.DerivLB = fun.ValDeriv(mdl.LB)
-	NewArmijo().Solve(mdl)
-	t.Log("Armijo")
-	t.Log(mdl.X)
+	r = NewArmijo().Solve(fun, in, p)
+	t.Log(r.FunEvals, r.Status)
 
-	if mdl.ObjX >= mdl.ObjLB {
+	if r.ObjX >= r.ObjLB {
 		t.Fail()
 	}
 
-	mdl = NewModel(fun)
-	mdl.Params.IterMax = 10
-	mdl.Params.Inexact = false
-	NewCubic().Solve(mdl)
+	p.IterMax = 10
+	p.Inexact = false
 
-	t.Log("Cubic")
-	t.Log(mdl.LB, mdl.X, mdl.UB, mdl.Status)
-	t.Log(mdl.ObjX - fun.OptVal())
-	t.Log(mdl.FunEvals, mdl.DerivEvals, mdl.Status)
-	if math.Abs(mdl.X-fun.OptLoc()) > 0.01 {
+	r = NewCubic().Solve(fun, in, p)
+
+	t.Log(r.LB, r.X, r.UB, r.Status)
+	t.Log(r.ObjX - fun.OptVal())
+	t.Log(r.FunEvals, r.Status)
+	if math.Abs(r.X-fun.OptLoc()) > 0.01 {
 		t.Fail()
 	}
 }

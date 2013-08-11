@@ -12,78 +12,77 @@ type Rosenbrock struct {
 
 func NewRosenbrock() *Rosenbrock {
 	return &Rosenbrock{
-		LineSearch: uni.NewQuadratic(false),
+		LineSearch: uni.NewQuadratic(),
 	}
 }
 
-func (sol *Rosenbrock) Solve(m *Model) {
+func (sol *Rosenbrock) Solve(o Function, in *Solution, p *Params, cb ...Callback) *Result {
+	r := NewResult(in)
+	obj := ObjWrapper{r: r, o: o}
+	r.init(obj)
+	h := NewHelper(r.Solution, cb)
+
 	eps := 1.0
+	n := len(r.X)
 
-	m.init(false, false)
-
-	d := make([]mat.Vec, m.N)
+	d := make([]mat.Vec, n)
 	for i := range d {
-		d[i] = mat.NewVec(m.N)
+		d[i] = mat.NewVec(n)
 		d[i][i] = 1
 	}
 
-	lambda := make([]float64, m.N)
+	lambda := make([]float64, n)
 
-	lf := make([]*LineFunc, m.N)
+	lf := make([]*LineFunc, n)
 	for i := range lf {
-		lf[i] = NewLineFunc(m.Obj, m.X, d[i])
+		lf[i] = NewLineFunc(obj, r.X, d[i])
 	}
-	mls := uni.NewModel(nil)
-	mls.Params.XTolAbs = m.Params.XTolAbs
-	mls.Params.XTolRel = m.Params.XTolRel
-	mls.Params.FunTolAbs = 0
-	mls.Params.FunTolRel = 0
 
-	for {
-		if m.Status = m.update(); m.Status != 0 {
-			return
-		}
+	lsInit := uni.NewSolution()
+	lsParams := uni.NewParams()
+	lsParams.XTolAbs = p.XTolAbs
+	lsParams.XTolRel = p.XTolRel
+	lsParams.FunTolAbs = 0
+	lsParams.FunTolRel = 0
+
+	for ; r.Status == NotTerminated; h.update(r, p) {
 
 		//Search in all directions
 		for i := range d {
-			mls.ChangeFun(lf[i])
 			lf[i].Dir = 1
 			valNeg := 0.0
 			valPos := lf[i].Val(eps)
-			m.FunEvals++
-			if valPos >= m.ObjX {
+			if valPos >= r.ObjX {
 				lf[i].Dir = -1
 				valNeg = lf[i].Val(eps)
-				m.FunEvals++
-				if valNeg >= m.ObjX {
+				if valNeg >= r.ObjX {
 					eps *= 0.5
 					lf[i].Dir = 1
-					mls.SetLB(-eps)
-					mls.SetUB(eps)
-					mls.SetX(0)
+					lsInit.SetLB(-eps)
+					lsInit.SetUB(eps)
+					lsInit.SetX(0)
 				} else {
-					mls.SetUB()
-					mls.SetLB()
-					mls.SetX(eps)
+					lsInit.SetUB()
+					lsInit.SetLB()
+					lsInit.SetX(eps)
 				}
 			} else {
-				mls.SetUB()
-				mls.SetLB()
-				mls.SetX(eps)
+				lsInit.SetUB()
+				lsInit.SetLB()
+				lsInit.SetX(eps)
 			}
-			sol.LineSearch.Solve(mls)
-			m.FunEvals += mls.FunEvals
+			lsRes := sol.LineSearch.Solve(lf[i], lsInit, lsParams)
 
-			lambda[i] = lf[i].Dir * mls.X
-			m.X.Axpy(lambda[i], d[i])
-			m.ObjX = mls.ObjX
+			lambda[i] = lf[i].Dir * lsRes.X
+			r.X.Axpy(lambda[i], d[i])
+			r.ObjX = lsRes.ObjX
 		}
 
 		//Find new directions
 		for i := range d {
-			if math.Abs(lambda[i]) > m.Params.XTolAbs {
+			if math.Abs(lambda[i]) > p.XTolAbs {
 				d[i].Scal(lambda[i])
-				for j := i + 1; j < m.N; j++ {
+				for j := i + 1; j < n; j++ {
 					d[i].Axpy(lambda[j], d[j])
 				}
 			}
@@ -92,10 +91,11 @@ func (sol *Rosenbrock) Solve(m *Model) {
 		//Gram-Schmidt, TODO:use QR factorization
 		for i := range d {
 			d[i].Scal(1 / d[i].Nrm2())
-			for j := i + 1; j < m.N; j++ {
+			for j := i + 1; j < n; j++ {
 				d[j].Axpy(-mat.Dot(d[i], d[j]), d[i])
 			}
 		}
 
 	}
+	return r
 }

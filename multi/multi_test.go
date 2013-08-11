@@ -8,9 +8,7 @@ import (
 	"github.com/dane-unltd/opt/uni"
 	"github.com/kortschak/cblas"
 	"math"
-	"math/rand"
 	"testing"
-	"time"
 )
 
 var cops struct {
@@ -32,29 +30,27 @@ func TestExampleModel(t *testing.T) {
 	b := mat.Vec{-2 * optSol[0] * condNo, -2 * optSol[1]}
 	c := -0.5 * mat.Dot(b, optSol)
 
-	//Create new 2-dimensional model.
-	mdl := NewModel(2, opt.NewQuadratic(A, b, c))
+	//define objective function
+	fun := opt.NewQuadratic(A, b, c)
 
-	//Register an event handler, that gets called when the model changes,
-	//which is basically in every iteration of the solver.
-	//Here we use the Display type to display progress in every iteration.
-	mdl.AddCallback(NewDisplay(1))
+	//set inital solution estimate
+	sol := NewSolution(mat.NewVec(2))
 
-	mdl.Params.IterMax = 5
+	//set termination parameters
+	p := NewParams()
+	p.IterMax = 5
 
 	//Use steepest descent solver to solve the model
-	solver := NewSteepestDescent()
-	solver.Solve(mdl)
+	result := NewSteepestDescent().Solve(fun, sol, p, NewDisplay(1))
 
-	fmt.Println("x =", mdl.X)
+	fmt.Println("x =", result.X)
 	//should be [1,2], but because of the bad conditioning we made little
 	//progress in the second dimension
 
 	//Use a BFGS solver to refine the result:
-	solver2 := NewLBFGS()
-	solver2.Solve(mdl)
+	result = NewLBFGS().Solve(fun, result.Solution, p, NewDisplay(1))
 
-	fmt.Println("x =", mdl.X)
+	fmt.Println("x =", result.X)
 }
 
 func TestQuadratic(t *testing.T) {
@@ -75,57 +71,46 @@ func TestQuadratic(t *testing.T) {
 
 	c := bTmp.Nrm2Sq()
 
-	m1 := NewModel(n, opt.NewQuadratic(AtA, b, c))
-	m1.AddCallback(NewDisplay(n))
+	//Define input arguments
+	obj := opt.NewQuadratic(AtA, b, c)
+	p := NewParams()
+	sol := NewSolution(mat.NewVec(n))
 
-	solver := NewSteepestDescent()
-	solver.Solve(m1)
+	//Steepest descent with armijo
+	stDesc := NewSteepestDescent()
+	res1 := stDesc.Solve(obj, sol, p, NewDisplay(100))
 
-	t.Log(m1.ObjX, m1.Iter, m1.Status)
+	t.Log(res1.ObjX, res1.FunEvals, res1.GradEvals, res1.Status)
 
-	solver.LineSearch = uni.NewQuadratic(false)
+	//Steepest descent with Quadratic
+	stDesc.LineSearch = uni.DerivWrapper{uni.NewQuadratic()}
+	res2 := stDesc.Solve(obj, sol, p, NewDisplay(100))
 
-	m2 := NewModel(n, opt.NewQuadratic(AtA, b, c))
-	m2.AddCallback(NewDisplay(n))
+	t.Log(res2.ObjX, res2.FunEvals, res2.GradEvals, res2.Status)
 
-	solver.Solve(m2)
+	//LBFGS with armijo
+	lbfgs := NewLBFGS()
+	res3 := lbfgs.Solve(obj, sol, p, NewDisplay(10))
 
-	t.Log(m2.ObjX, m2.Iter, m2.Status)
-
-	solver2 := NewLBFGS()
-
-	m3 := NewModel(n, opt.NewQuadratic(AtA, b, c))
-	m3.AddCallback(NewDisplay(n / 10))
-
-	solver2.Solve(m3)
-
-	t.Log(m3.ObjX, m3.Iter, m3.Status)
+	t.Log(res3.ObjX, res3.FunEvals, res3.GradEvals, res3.Status)
 
 	//constrained problems (constraints described as projection)
-	solver3 := NewProjGrad()
+	projGrad := NewProjGrad()
 
-	m4 := NewModel(n, opt.NewQuadratic(AtA, b, c))
-	m4.Proj = opt.RealPlus{}
-	m4.AddCallback(NewDisplay(n))
+	res4 := projGrad.Solve(obj, opt.RealPlus{}, sol, p, NewDisplay(100))
 
-	solver3.Solve(m4)
+	t.Log(res4.ObjX, res4.FunEvals, res4.GradEvals, res4.Status)
 
-	t.Log(m4.ObjX, m4.Iter, m4.Status)
-
-	if math.Abs(m1.ObjX) > 0.01 {
-		t.Log(m1.ObjX)
+	if math.Abs(res1.ObjX) > 0.01 {
 		t.Fail()
 	}
-	if math.Abs(m2.ObjX) > 0.01 {
-		t.Log(m2.ObjX)
+	if math.Abs(res2.ObjX) > 0.01 {
 		t.Fail()
 	}
-	if math.Abs(m3.ObjX) > 0.01 {
-		t.Log(m3.ObjX)
+	if math.Abs(res3.ObjX) > 0.01 {
 		t.Fail()
 	}
-	if math.Abs(m4.ObjX) > 0.01 {
-		t.Log(m4.ObjX)
+	if math.Abs(res4.ObjX) > 0.01 {
 		t.Fail()
 	}
 }
@@ -135,80 +120,58 @@ func TestRosenbrock(t *testing.T) {
 
 	n := 10
 	scale := 10.0
-	xInit := mat.NewVec(n)
-	for i := 0; i < n; i++ {
-		xInit[i] = rand.Float64() * scale
-	}
+	xInit := mat.RandVec(n).Scal(scale)
 
-	m1 := NewModel(n, opt.Rosenbrock{})
-	m1.SetX(xInit, true)
-	m1.AddCallback(NewDisplay(1000))
-	m1.Params.IterMax = 100000
-	m1.Params.FunEvalMax = 100000
-	solver := NewSteepestDescent()
+	//Define input arguments
+	obj := opt.Rosenbrock{}
+	p := NewParams()
+	p.FunEvalMax = 100000
+	p.IterMax = 100000
+	sol := NewSolution(xInit)
 
-	solver.Solve(m1)
-	t.Log(m1.ObjX, m1.Iter, m1.Status)
+	//Steepest descent with armijo
+	stDesc := NewSteepestDescent()
+	res1 := stDesc.Solve(obj, sol, p, NewDisplay(100))
 
-	solver.LineSearch = uni.NewQuadratic(false)
+	t.Log(res1.ObjX, res1.FunEvals, res1.GradEvals, res1.Status)
 
-	m2 := NewModel(n, opt.Rosenbrock{})
-	m2.SetX(xInit, true)
-	m2.Params.IterMax = 100000
-	m2.Params.FunEvalMax = 100000
+	//Steepest descent with Quadratic
+	stDesc.LineSearch = uni.DerivWrapper{uni.NewQuadratic()}
+	res2 := stDesc.Solve(obj, sol, p, NewDisplay(100))
 
-	//Example on how to use a callback to display information
-	//Here we could plug in something more sophisticated
-	m2.AddCallback(NewDisplay(1000))
+	t.Log(res2.ObjX, res2.FunEvals, res2.GradEvals, res2.Status)
 
-	//Registering a history which stores time and objective values
-	hist := &History{T: make([]time.Duration, 0), Obj: make([]float64, 0)}
-	m2.AddCallback(hist)
+	//LBFGS with armijo
+	lbfgs := NewLBFGS()
+	res3 := lbfgs.Solve(obj, sol, p, NewDisplay(10))
 
-	solver.Solve(m2)
-	t.Log(m2.ObjX, m2.Iter, m2.Status)
+	t.Log(res3.ObjX, res3.FunEvals, res3.GradEvals, res3.Status)
 
-	solver2 := NewLBFGS()
+	//LBFGS with Quadratic
+	lbfgs.LineSearch = uni.DerivWrapper{uni.NewQuadratic()}
+	res4 := lbfgs.Solve(obj, sol, p, NewDisplay(10))
 
-	m3 := NewModel(n, opt.Rosenbrock{})
-	m3.SetX(xInit, true)
-	m3.AddCallback(NewDisplay(10))
-	solver2.Solve(m3)
-	t.Log(m3.ObjX, m3.Iter, m3.Status)
+	t.Log(res4.ObjX, res4.FunEvals, res4.GradEvals, res4.Status)
 
-	m4 := NewModel(n, opt.Rosenbrock{})
-	m4.SetX(xInit, true)
-	m4.AddCallback(NewDisplay(10))
-	solver2.LineSearch = uni.NewQuadratic(false)
-	solver2.Solve(m4)
-	t.Log(m4.ObjX, m4.Iter, m4.Status)
+	//LBFGS with Cubic
+	lbfgs.LineSearch = uni.NewCubic()
+	res5 := lbfgs.Solve(obj, sol, p, NewDisplay(10))
 
-	m5 := NewModel(n, opt.Rosenbrock{})
-	m5.SetX(xInit, true)
-	m5.AddCallback(NewDisplay(10))
-	m5.Params.IterMax = 1000
-	solver2.LineSearch = uni.NewCubic()
-	solver2.Solve(m5)
-	t.Log(m5.ObjX, m5.Iter, m5.Status)
+	t.Log(res5.ObjX, res5.FunEvals, res5.GradEvals, res5.Status)
 
-	if math.Abs(m1.ObjX) > 0.1 {
-		t.Log(m1.ObjX)
+	if math.Abs(res1.ObjX) > 0.01 {
 		t.Fail()
 	}
-	if math.Abs(m2.ObjX) > 0.1 {
-		t.Log(m2.ObjX)
+	if math.Abs(res2.ObjX) > 0.01 {
 		t.Fail()
 	}
-	if math.Abs(m3.ObjX) > 0.1 {
-		t.Log(m3.ObjX)
+	if math.Abs(res3.ObjX) > 0.01 {
 		t.Fail()
 	}
-	if math.Abs(m4.ObjX) > 0.1 {
-		t.Log(m4.ObjX)
+	if math.Abs(res4.ObjX) > 0.01 {
 		t.Fail()
 	}
-	if math.Abs(m5.ObjX) > 0.1 {
-		t.Log(m5.ObjX)
+	if math.Abs(res5.ObjX) > 0.01 {
 		t.Fail()
 	}
 }
@@ -230,30 +193,32 @@ func TestSolve(t *testing.T) {
 	mat.Register(cops)
 
 	xInit := mat.RandVec(10).Scal(10.0)
+	sol := NewSolution(xInit)
 
-	mdl := Solve(opt.Rosenbrock{}, xInit, nil, NewDisplay(10))
+	result := Solve(opt.Rosenbrock{}, sol, nil, NewDisplay(10))
 
-	t.Log(mdl.Status, mdl.ObjX, mdl.Iter)
-	if math.Abs(mdl.ObjX) > 0.1 {
+	t.Log(result.Status, result.ObjX, result.Iter)
+	if math.Abs(result.ObjX) > 0.1 {
 		t.Fail()
 	}
 
 	params := NewParams()
 	params.IterMax = 100000
 
-	mdl = SolveGradProjected(opt.Rosenbrock{}, opt.RealPlus{}, xInit,
+	result = SolveGradProjected(opt.Rosenbrock{}, opt.RealPlus{}, sol,
 		params, NewDisplay(1000))
-	t.Log(mdl.Status, mdl.ObjX, mdl.Iter)
+	t.Log(result.Status, result.ObjX, result.Iter)
 
 	params.XTolAbs = 1e-9
 	params.XTolRel = 0
 	params.FunTolRel = 0
 	params.FunTolAbs = 0
 	params.FunEvalMax = 100000
-	mdl = Solve(rb{}, xInit, params, NewDisplay(1))
-	t.Log(mdl.Status, mdl.ObjX, mdl.Iter, mdl.X)
+	result = Solve(rb{}, sol, params, NewDisplay(1))
+	t.Log(result.Status, result.ObjX, result.Iter, result.X)
 
 	xInit = mat.Vec{0, 3}
-	mdl = Solve(rosTest{}, xInit, params, NewDisplay(1))
-	t.Log(mdl.Status, mdl.ObjX, mdl.Iter)
+	sol.SetX(xInit, false)
+	result = Solve(rosTest{}, sol, params, NewDisplay(1))
+	t.Log(result.Status, result.ObjX, result.Iter)
 }

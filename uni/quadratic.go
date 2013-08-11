@@ -6,199 +6,174 @@ import (
 
 //Exact line search for strictly quasi-convex functions
 type Quadratic struct {
-	Inexact bool
 }
 
-func NewQuadratic(inexact bool) *Quadratic {
-	return &Quadratic{
-		Inexact: inexact,
-	}
+func NewQuadratic() *Quadratic {
+	return &Quadratic{}
 }
 
-func (sol *Quadratic) Solve(m *Model) {
+func (sol *Quadratic) Solve(o Function, in *Solution, p *Params) *Result {
+	r := NewResult(in)
+	obj := ObjWrapper{r: r, o: o}
+	r.init(obj)
+	h := NewHelper(r.Solution)
+
 	var eps float64
-
-	if math.IsNaN(m.ObjLB) {
-		m.ObjLB = m.Obj.Val(m.LB)
-		m.FunEvals++
-	}
 
 	fNew := 0.0
 	xNew := 0.0
 
-	x0 := m.LB
-	f0 := m.ObjLB
-	g0 := m.DerivLB
-
-	m.init(false, false)
-
-	if math.IsInf(m.UB, 1) {
-		xNew = m.X
-		fNew = m.ObjX
+	if math.IsInf(r.UB, 1) {
+		xNew = r.X
+		fNew = r.ObjX
 		if math.IsNaN(xNew) {
 			xNew = 1
-			fNew = m.Obj.Val(xNew)
-			m.FunEvals++
+			fNew = obj.Val(xNew)
 		}
 		if math.IsNaN(fNew) {
-			fNew = m.Obj.Val(xNew)
-			m.FunEvals++
+			fNew = obj.Val(xNew)
 		}
 
-		step := m.X - m.LB
-		if fNew < m.ObjLB {
-			m.ObjX = fNew
-			m.X = xNew
+		step := r.X - r.LB
+		if fNew < r.ObjLB {
+			r.ObjX = fNew
+			r.X = xNew
 
-			m.UB = m.X + step
-			m.ObjUB = m.Obj.Val(m.UB)
-			m.FunEvals++
-			for m.ObjUB <= m.ObjX {
-				m.LB = m.X
-				m.ObjLB = m.ObjX
+			r.UB = r.X + step
+			r.ObjUB = obj.Val(r.UB)
+			for r.ObjUB <= r.ObjX {
+				r.LB = r.X
+				r.ObjLB = r.ObjX
 
-				m.X = m.UB
-				m.ObjX = m.ObjUB
+				r.X = r.UB
+				r.ObjX = r.ObjUB
 
 				step *= 2
-				m.UB = m.X + step
-				m.ObjUB = m.Obj.Val(m.UB)
-				m.FunEvals++
+				r.UB = r.X + step
+				r.ObjUB = obj.Val(r.UB)
 
-				if m.Status = m.update(); m.Status != 0 {
-					return
+				if h.update(r, p); r.Status != 0 {
+					return r
 				}
 			}
 		} else {
-			m.ObjUB = fNew
-			m.UB = xNew
+			r.ObjUB = fNew
+			r.UB = xNew
 
 			step *= 0.5
 
-			m.X = m.LB + step
-			m.ObjX = m.Obj.Val(m.X)
-			m.FunEvals++
-			for m.ObjX >= m.ObjLB {
-				m.UB = m.X
-				m.ObjUB = m.ObjX
+			r.X = r.LB + step
+			r.ObjX = obj.Val(r.X)
+			for r.ObjX >= r.ObjLB {
+				r.UB = r.X
+				r.ObjUB = r.ObjX
 
 				step *= 0.5
-				m.X = m.LB + step
-				m.ObjX = m.Obj.Val(m.X)
-				m.FunEvals++
+				r.X = r.LB + step
+				r.ObjX = obj.Val(r.X)
 
-				if m.Status = m.update(); m.Status != 0 {
-					return
+				if h.update(r, p); r.Status != 0 {
+					return r
 				}
 			}
 		}
 	} else {
-		eps = math.Min(m.Params.XTolAbs, m.Params.XTolRel*m.initialInterval)
+		eps = math.Min(p.XTolAbs, p.XTolRel*h.initialInterval)
 		if eps <= 0 {
-			eps = 0.01 * m.initialInterval
+			eps = 0.01 * h.initialInterval
 		}
-		m.UB = m.UB
-		m.ObjUB = m.ObjUB
-		if math.IsNaN(m.ObjUB) {
-			m.ObjUB = m.Obj.Val(m.UB)
-			m.FunEvals++
+		r.UB = r.UB
+		r.ObjUB = r.ObjUB
+		if math.IsNaN(r.ObjUB) {
+			r.ObjUB = obj.Val(r.UB)
 		}
-		if m.ObjUB < m.ObjLB {
-			m.X = m.UB - eps
-			m.ObjX = m.Obj.Val(m.X)
-			m.FunEvals++
-			if m.ObjX >= m.ObjUB {
-				m.X = m.UB
-				m.ObjX = m.ObjUB
-				m.Status = XRelConv
-				return
+		if r.ObjUB < r.ObjLB {
+			r.X = r.UB - eps
+			r.ObjX = obj.Val(r.X)
+			if r.ObjX >= r.ObjUB {
+				r.X = r.UB
+				r.ObjX = r.ObjUB
+				r.Status = XRelConv
+				return r
 			}
 		} else {
-			m.X = 0.5 * m.UB
-			m.ObjX = m.Obj.Val(m.X)
-			m.FunEvals++
-			for m.ObjX >= m.ObjLB {
-				m.X *= 0.5
-				m.ObjX = m.Obj.Val(m.X)
-				m.FunEvals++
+			r.X = 0.5 * r.UB
+			r.ObjX = obj.Val(r.X)
+			for r.ObjX >= r.ObjLB {
+				r.X *= 0.5
+				r.ObjX = obj.Val(r.X)
 
-				if m.Status = m.update(); m.Status != 0 {
-					return
+				if h.update(r, p); r.Status != 0 {
+					return r
 				}
 			}
 		}
 	}
 
 	if eps == 0 {
-		m.initialInterval = m.UB - m.LB
-		eps = math.Min(m.Params.XTolAbs, m.Params.XTolRel*m.initialInterval)
+		h.initialInterval = r.UB - r.LB
+		eps = math.Min(p.XTolAbs, p.XTolRel*h.initialInterval)
 		if eps == 0 {
-			eps = 0.01 * m.initialInterval
+			eps = 0.01 * h.initialInterval
 		}
 	}
 
 	for {
 		//optimum of quadratic fit
-		xNew = -0.5 * (m.UB*m.UB*(m.ObjLB-m.ObjX) + m.X*m.X*(m.ObjUB-m.ObjLB) + m.LB*m.LB*(m.ObjX-m.ObjUB)) /
-			(m.UB*(m.ObjX-m.ObjLB) + m.X*(m.ObjLB-m.ObjUB) + m.LB*(m.ObjUB-m.ObjX))
+		xNew = -0.5 * (r.UB*r.UB*(r.ObjLB-r.ObjX) + r.X*r.X*(r.ObjUB-r.ObjLB) + r.LB*r.LB*(r.ObjX-r.ObjUB)) /
+			(r.UB*(r.ObjX-r.ObjLB) + r.X*(r.ObjLB-r.ObjUB) + r.LB*(r.ObjUB-r.ObjX))
 
-		if math.Abs(m.LB-xNew) < 0.4*eps {
-			xNew = m.LB + 0.4*eps
+		if math.Abs(r.LB-xNew) < 0.4*eps {
+			xNew = r.LB + 0.4*eps
 		}
-		if math.Abs(m.UB-xNew) < 0.4*eps {
-			xNew = m.UB - 0.4*eps
+		if math.Abs(r.UB-xNew) < 0.4*eps {
+			xNew = r.UB - 0.4*eps
 		}
-		if math.Abs(m.X-xNew) < 0.4*eps {
-			if m.UB-m.X > m.X-m.LB {
-				xNew = m.X + 0.4*eps
+		if math.Abs(r.X-xNew) < 0.4*eps {
+			if r.UB-r.X > r.X-r.LB {
+				xNew = r.X + 0.4*eps
 			} else {
-				xNew = m.X - 0.4*eps
+				xNew = r.X - 0.4*eps
 			}
 		}
 
-		fNew = m.Obj.Val(xNew)
-		m.FunEvals++
+		fNew = obj.Val(xNew)
 
-		if !(xNew > m.LB && xNew < m.UB) || (xNew < m.X && fNew > m.ObjLB) ||
-			(xNew > m.X && fNew > m.ObjUB) {
-			if m.UB-m.X > m.X-m.LB {
-				xNew = (m.X + m.UB) / 2
+		if !(xNew > r.LB && xNew < r.UB) || (xNew < r.X && fNew > r.ObjLB) ||
+			(xNew > r.X && fNew > r.ObjUB) {
+			if r.UB-r.X > r.X-r.LB {
+				xNew = (r.X + r.UB) / 2
 			} else {
-				xNew = (m.X + m.LB) / 2
+				xNew = (r.X + r.LB) / 2
 			}
-			fNew = m.Obj.Val(xNew)
-			m.FunEvals++
+			fNew = obj.Val(xNew)
 		}
 
-		if xNew > m.X {
-			if fNew >= m.ObjX {
-				m.UB = xNew
-				m.ObjUB = fNew
+		if xNew > r.X {
+			if fNew >= r.ObjX {
+				r.UB = xNew
+				r.ObjUB = fNew
 			} else {
-				m.LB = m.X
-				m.ObjLB = m.ObjX
-				m.X = xNew
-				m.ObjX = fNew
+				r.LB = r.X
+				r.ObjLB = r.ObjX
+				r.X = xNew
+				r.ObjX = fNew
 			}
 		} else {
-			if fNew >= m.ObjX {
-				m.LB = xNew
-				m.ObjLB = fNew
+			if fNew >= r.ObjX {
+				r.LB = xNew
+				r.ObjLB = fNew
 			} else {
-				m.UB = m.X
-				m.ObjUB = m.ObjX
-				m.X = xNew
-				m.ObjX = fNew
+				r.UB = r.X
+				r.ObjUB = r.ObjX
+				r.X = xNew
+				r.ObjX = fNew
 			}
 		}
 
-		if sol.Inexact {
-			if f0-m.ObjX <= (m.X-x0)*0.5*g0 {
-				break
-			}
-		}
-		if m.Status = m.update(); m.Status != 0 {
+		if h.update(r, p); r.Status != 0 {
 			break
 		}
 	}
+	return r
 }

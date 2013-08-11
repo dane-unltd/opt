@@ -12,78 +12,78 @@ func NewArmijo() *Armijo {
 	return &Armijo{}
 }
 
-func (s *Armijo) Solve(m *Model) {
-	m.init(false, false)
+func (s *Armijo) Solve(o Function, in *Solution, p *Params) *Result {
+	r := NewResult(in)
+	obj := ObjWrapper{r: r, o: o}
+	r.init(obj)
+	h := NewHelper(r.Solution)
 
 	beta := 0.5
 
-	step := m.X - m.LB
-	maxStep := m.UB - m.LB
+	step := r.X - r.LB
+	maxStep := r.UB - r.LB
 
-	if math.IsNaN(m.DerivLB) {
+	if math.IsNaN(r.DerivLB) {
 		panic("have to set derivation of lower bound for Armijo")
 	}
 
-	if m.DerivLB > 0 {
-		m.Status = Fail
-		return
+	if r.DerivLB > 0 {
+		r.Status = Fail
+		return r
 	}
 
-	m.X = m.LB + step
-	m.ObjX = m.Obj.Val(m.X)
-	m.FunEvals++
+	r.X = r.LB + step
+	r.ObjX = obj.Val(r.X)
 
-	if m.ObjX-m.ObjLB > m.Params.Armijo*m.DerivLB*step {
-		fPrev := m.ObjX
+	if r.ObjX-r.ObjLB > p.Armijo*r.DerivLB*step {
+		fPrev := r.ObjX
 		step *= beta
 		for {
-			m.X = m.LB + step
-			m.ObjX = m.Obj.Val(m.X)
-			m.FunEvals++
+			r.X = r.LB + step
+			r.ObjX = obj.Val(r.X)
 
-			if m.Status = m.update(); m.Status != 0 {
+			if h.update(r, p); r.Status != 0 {
 				break
 			}
 
-			if m.ObjX-m.ObjLB <= m.Params.Armijo*m.DerivLB*step {
-				if fPrev < m.ObjX {
+			if r.ObjX-r.ObjLB <= p.Armijo*r.DerivLB*step {
+				if fPrev < r.ObjX {
 					step /= beta
-					m.X = m.LB + step
-					m.ObjX = fPrev
+					r.X = r.LB + step
+					r.ObjX = fPrev
 				}
 				break
 			}
-			fPrev = m.ObjX
+			fPrev = r.ObjX
 			step *= beta
 		}
 	} else {
-		fPrev := m.ObjX
+		fPrev := r.ObjX
 		if step == maxStep {
-			return
+			return r
 		}
 		step /= beta
 		if step > maxStep {
 			step = maxStep
 		}
 		for {
-			m.X = m.LB + step
-			m.ObjX = m.Obj.Val(m.X)
-			m.FunEvals++
-			if m.Status = m.update(); m.Status != 0 {
+			r.X = r.LB + step
+			r.ObjX = obj.Val(r.X)
+			if h.update(r, p); r.Status != 0 {
 				break
 			}
 
-			if m.ObjX-m.ObjLB > m.Params.Armijo*m.DerivLB*step {
-				if fPrev < m.ObjX {
+			if r.ObjX-r.ObjLB > p.Armijo*r.DerivLB*step {
+				if fPrev < r.ObjX {
 					step *= beta
-					m.X = m.LB + step
-					m.ObjX = fPrev
+					r.X = r.LB + step
+					r.ObjX = fPrev
 				}
 				break
 			}
-			fPrev = m.ObjX
+			fPrev = r.ObjX
 			if step == maxStep {
-				return
+				return r
 			}
 			step /= beta
 			if step > maxStep {
@@ -91,4 +91,6 @@ func (s *Armijo) Solve(m *Model) {
 			}
 		}
 	}
+	r.Status = Success
+	return r
 }

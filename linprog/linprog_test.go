@@ -31,19 +31,19 @@ func TestLinprog2(t *testing.T) {
 	c := mat.NewVec(n)
 	c[0] = -1
 
-	mdl := NewStandard(c, A, b)
+	prob := NewStandard(c, A, b)
 
-	Solve(mdl)
+	result := Solve(prob, nil)
 
 	rd := mat.NewVec(n)
 	rp := mat.NewVec(m)
 	rs := mat.NewVec(n)
 
-	rd.Sub(c, mdl.S)
-	rd.AddMul(At, mdl.Y, -1)
-	rp.Apply(A, mdl.X)
+	rd.Sub(c, result.S)
+	rd.AddMul(At, result.Y, -1)
+	rp.Apply(A, result.X)
 	rp.Sub(b, rp)
-	rs.Mul(mdl.X, mdl.S)
+	rs.Mul(result.X, result.S)
 	rs.Neg(rs)
 	dev := (rd.Asum() + rp.Asum() + rs.Asum()) / float64(n)
 	if dev > tol {
@@ -51,10 +51,10 @@ func TestLinprog2(t *testing.T) {
 	}
 
 	temp := mat.NewVec(n)
-	temp.Sub(mdl.X, xStar)
+	temp.Sub(result.X, xStar)
 
 	if temp.Nrm2() > tol {
-		t.Log(mdl.X)
+		t.Log(result.X)
 		t.Fail()
 	}
 }
@@ -76,18 +76,16 @@ func TestLinprog(t *testing.T) {
 	rp := mat.NewVec(m)
 	rs := mat.NewVec(n)
 
-	mdl := NewStandard(c, A, b)
+	prob := NewStandard(c, A, b)
 
 	//Example for printing duality gap and infeasibilities
-	mdl.AddCallback(NewDisplay(2).Update)
+	result := Solve(prob, nil, NewDisplay(2))
 
-	Solve(mdl)
-
-	rd.Sub(c, mdl.S)
-	rd.AddMul(At, mdl.Y, -1)
-	rp.Apply(A, mdl.X)
+	rd.Sub(c, result.S)
+	rd.AddMul(At, result.Y, -1)
+	rp.Apply(A, result.X)
 	rp.Sub(b, rp)
-	rs.Mul(mdl.X, mdl.S)
+	rs.Mul(result.X, result.S)
 	rs.Neg(rs)
 
 	dev := (rd.Asum() + rp.Asum() + rs.Asum()) / float64(n)
@@ -115,16 +113,16 @@ func BenchmarkLinprog(bench *testing.B) {
 
 		At := A.TrView()
 
-		mdl := NewStandard(c, A, b)
+		prob := NewStandard(c, A, b)
 		bench.StartTimer()
-		Solve(mdl)
+		result := Solve(prob, nil)
 		bench.StopTimer()
 
-		rd.Sub(c, mdl.S)
-		rd.AddMul(At, mdl.Y, -1)
-		rp.Apply(A, mdl.X)
+		rd.Sub(c, result.S)
+		rd.AddMul(At, result.Y, -1)
+		rp.Apply(A, result.X)
 		rp.Sub(b, rp)
-		rs.Mul(mdl.X, mdl.S)
+		rs.Mul(result.X, result.S)
 		rs.Neg(rs)
 
 		dev := (rd.Asum() + rp.Asum() + rs.Asum()) / float64(n)

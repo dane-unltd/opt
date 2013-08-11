@@ -1,74 +1,46 @@
 package multi
 
-import (
-	"github.com/dane-unltd/linalg/mat"
-)
+type GradSolver interface {
+	Solve(obj Grad, in *Solution, p *Params, cb ...Callback) *Result
+}
+
+type ProjGradSolver interface {
+	Solve(obj Grad, proj Projection,
+		in *Solution, p *Params, cb ...Callback) *Result
+}
 
 type Solver interface {
-	Solve(m *Model)
+	Solve(obj Function, in *Solution, p *Params, cb ...Callback) *Result
 }
 
 //Solve a problem choosing an appropriate solver.
 //Checks the provided function for available information.
-func Solve(f Function, x0 mat.Vec, p *Params, cb ...Callback) *Model {
-	mdl := NewModel(len(x0), f)
-	mdl.SetX(x0, true)
-
-	if p != nil {
-		mdl.Params = *p
-	}
-	if len(cb) > 0 {
-		mdl.callbacks = cb
+func Solve(f Function, in *Solution, p *Params, cb ...Callback) *Result {
+	if p == nil {
+		p = NewParams()
 	}
 
-	if _, ok := f.(Grad); ok {
-		solver := NewLBFGS()
-		mdl.Solver = solver
-		solver.Solve(mdl)
+	if fg, ok := f.(Grad); ok {
+		return NewLBFGS().Solve(fg, in, p, cb...)
 	} else {
-		solver := NewRosenbrock()
-		mdl.Solver = solver
-		solver.Solve(mdl)
+		return NewRosenbrock().Solve(f, in, p, cb...)
 	}
-
-	return mdl
 }
 
 //Solve a problem using a gradient based method
-func SolveGrad(f Grad, x0 mat.Vec, p *Params, cb ...Callback) *Model {
-	mdl := NewModel(len(x0), f)
-	mdl.SetX(x0, true)
-
-	if p != nil {
-		mdl.Params = *p
-	}
-	if len(cb) > 0 {
-		mdl.callbacks = cb
+func SolveGrad(f Grad, in *Solution, p *Params, cb ...Callback) *Result {
+	if p == nil {
+		p = NewParams()
 	}
 
-	solver := NewLBFGS()
-	mdl.Solver = solver
-	solver.Solve(mdl)
-
-	return mdl
+	return NewLBFGS().Solve(f, in, p, cb...)
 }
 
 //Solve a constrained problem using a gradient and projection based method.
-func SolveGradProjected(f Grad, pr Projection, x0 mat.Vec, p *Params, cb ...Callback) *Model {
-	mdl := NewModel(len(x0), f)
-	mdl.Proj = pr
-	mdl.SetX(x0, true)
-
-	if p != nil {
-		mdl.Params = *p
-	}
-	if len(cb) > 0 {
-		mdl.callbacks = cb
+func SolveGradProjected(f Grad, pr Projection, in *Solution, p *Params, cb ...Callback) *Result {
+	if p == nil {
+		p = NewParams()
 	}
 
-	solver := NewProjGrad()
-	mdl.Solver = solver
-	solver.Solve(mdl)
-
-	return mdl
+	return NewProjGrad().Solve(f, pr, in, p, cb...)
 }

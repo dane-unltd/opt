@@ -8,49 +8,54 @@ import (
 
 type LBFGS struct {
 	Mem        int
-	LineSearch uni.Solver
+	LineSearch uni.DerivSolver
 }
 
 func NewLBFGS() *LBFGS {
 	s := &LBFGS{
 		Mem:        5,
-		LineSearch: uni.NewArmijo(),
+		LineSearch: uni.DerivWrapper{uni.NewArmijo()},
 	}
 	return s
 }
 
-func (sol LBFGS) Solve(m *Model) {
-
-	m.init(true, false)
+func (sol LBFGS) Solve(o Grad, in *Solution, p *Params, cb ...Callback) *Result {
+	r := NewResult(in)
+	obj := ObjGradWrapper{r: r, o: o}
+	r.initGrad(obj)
+	h := NewHelper(r.Solution, cb)
 
 	stepSize := 1.0
 	gLin := 0.0
+	n := len(r.X)
 
 	S := make([]mat.Vec, sol.Mem)
 	Y := make([]mat.Vec, sol.Mem)
 	for i := 0; i < sol.Mem; i++ {
-		S[i] = mat.NewVec(m.N)
-		Y[i] = mat.NewVec(m.N)
+		S[i] = mat.NewVec(n)
+		Y[i] = mat.NewVec(n)
 	}
 
-	d := mat.NewVec(m.N)
+	d := mat.NewVec(n)
 
-	xOld := mat.NewVec(m.N)
-	gOld := mat.NewVec(m.N)
-	sNew := mat.NewVec(m.N)
-	yNew := mat.NewVec(m.N)
+	xOld := mat.NewVec(n)
+	gOld := mat.NewVec(n)
+	sNew := mat.NewVec(n)
+	yNew := mat.NewVec(n)
 
 	alphas := mat.NewVec(sol.Mem)
 	betas := mat.NewVec(sol.Mem)
 	rhos := mat.NewVec(sol.Mem)
 
-	mls := uni.NewModel(NewLineFuncDeriv(m.grad, m.X, d))
+	lineFunc := NewLineFuncDeriv(obj, r.X, d)
+	lsInit := uni.NewSolution()
+	lsParams := uni.NewParams()
 
-	for ; m.Status == NotTerminated; m.update() {
-		d.Copy(m.GradX)
-		if m.Iter > 0 {
-			yNew.Sub(m.GradX, gOld)
-			sNew.Sub(m.X, xOld)
+	for ; r.Status == NotTerminated; h.update(r, p) {
+		d.Copy(r.GradX)
+		if r.Iter > 0 {
+			yNew.Sub(r.GradX, gOld)
+			sNew.Sub(r.X, xOld)
 
 			temp := S[len(S)-1]
 			copy(S[1:], S)
@@ -76,39 +81,31 @@ func (sol LBFGS) Solve(m *Model) {
 
 		d.Scal(-1)
 
-		gLin = mat.Dot(d, m.GradX)
+		gLin = mat.Dot(d, r.GradX)
 
-		mls.SetX(stepSize)
-		mls.SetLB(0, m.ObjX, gLin)
-		mls.SetUB()
-		sol.LineSearch.Solve(mls)
-		m.FunEvals += mls.FunEvals
-		m.GradEvals += mls.DerivEvals
-		if mls.Status < 0 {
-			fmt.Println("Linesearch:", mls.Status)
-			d.Copy(m.GradX)
+		lsInit.SetX(stepSize)
+		lsInit.SetLB(0, r.ObjX, gLin)
+		lsRes := sol.LineSearch.Solve(lineFunc, lsInit, lsParams)
+		if lsRes.Status < 0 {
+			fmt.Println("Linesearch:", lsRes.Status)
+			d.Copy(r.GradX)
 			d.Scal(-1)
-			mls.SetX(stepSize)
-			mls.SetLB(0, m.ObjX, -m.GradX.Nrm2Sq())
-			mls.SetUB()
-			sol.LineSearch.Solve(mls)
-			m.FunEvals += mls.FunEvals
-			m.GradEvals += mls.DerivEvals
-			if mls.Status < 0 {
-				fmt.Println("Linesearch:", mls.Status)
-				m.Status = Status(mls.Status)
+			lsInit.SetLB(0, r.ObjX, -r.GradX.Nrm2Sq())
+			lsRes = sol.LineSearch.Solve(lineFunc, lsInit, lsParams)
+			if lsRes.Status < 0 {
+				fmt.Println("Linesearch:", lsRes.Status)
+				r.Status = Status(lsRes.Status)
 
 				break
 			}
 		}
-		stepSize, m.ObjX = mls.X, mls.ObjX
+		stepSize, r.ObjX = lsRes.X, lsRes.ObjX
 
-		xOld.Copy(m.X)
-		gOld.Copy(m.GradX)
+		xOld.Copy(r.X)
+		gOld.Copy(r.GradX)
 
-		m.X.Axpy(stepSize, d)
-		m.grad.ValGrad(m.X, m.GradX)
-		m.FunEvals++
-		m.GradEvals++
+		r.X.Axpy(stepSize, d)
+		obj.ValGrad(r.X, r.GradX)
 	}
+	return r
 }
