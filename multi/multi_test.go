@@ -83,7 +83,7 @@ func TestQuadratic(t *testing.T) {
 
 	t.Log(m1.ObjX, m1.Iter, m1.Status)
 
-	solver.LineSearch = uni.NewQuadratic(false)
+	solver.LineSearch = uni.DerivWrapper{uni.NewQuadratic()}
 
 	m2 := NewModel(n, opt.NewQuadratic(AtA, b, c))
 	m2.AddCallback(NewDisplay(n))
@@ -150,7 +150,7 @@ func TestRosenbrock(t *testing.T) {
 	solver.Solve(m1)
 	t.Log(m1.ObjX, m1.Iter, m1.Status)
 
-	solver.LineSearch = uni.NewQuadratic(false)
+	solver.LineSearch = uni.DerivWrapper{uni.NewQuadratic()}
 
 	m2 := NewModel(n, opt.Rosenbrock{})
 	m2.SetX(xInit, true)
@@ -179,7 +179,7 @@ func TestRosenbrock(t *testing.T) {
 	m4 := NewModel(n, opt.Rosenbrock{})
 	m4.SetX(xInit, true)
 	m4.AddCallback(NewDisplay(10))
-	solver2.LineSearch = uni.NewQuadratic(false)
+	solver2.LineSearch = uni.DerivWrapper{uni.NewQuadratic()}
 	solver2.Solve(m4)
 	t.Log(m4.ObjX, m4.Iter, m4.Status)
 

@@ -12,7 +12,7 @@ type Rosenbrock struct {
 
 func NewRosenbrock() *Rosenbrock {
 	return &Rosenbrock{
-		LineSearch: uni.NewQuadratic(false),
+		LineSearch: uni.NewQuadratic(),
 	}
 }
 
@@ -33,11 +33,13 @@ func (sol *Rosenbrock) Solve(m *Model) {
 	for i := range lf {
 		lf[i] = NewLineFunc(m.Obj, m.X, d[i])
 	}
-	mls := uni.NewModel(nil)
-	mls.Params.XTolAbs = m.Params.XTolAbs / float64(m.N)
-	mls.Params.XTolRel = m.Params.XTolRel / float64(m.N)
-	mls.Params.FunTolAbs = 0
-	mls.Params.FunTolRel = 0
+
+	lsInit := uni.NewSolution()
+	lsParams := uni.NewParams()
+	lsParams.XTolAbs = m.Params.XTolAbs
+	lsParams.XTolRel = m.Params.XTolRel
+	lsParams.FunTolAbs = 0
+	lsParams.FunTolRel = 0
 
 	for {
 		if m.Status = m.update(); m.Status != 0 {
@@ -46,7 +48,6 @@ func (sol *Rosenbrock) Solve(m *Model) {
 
 		//Search in all directions
 		for i := range d {
-			mls.ChangeFun(lf[i])
 			lf[i].Dir = 1
 			valNeg := 0.0
 			valPos := lf[i].Val(eps)
@@ -58,25 +59,25 @@ func (sol *Rosenbrock) Solve(m *Model) {
 				if valNeg >= m.ObjX {
 					eps *= 0.5
 					lf[i].Dir = 1
-					mls.SetLB(-eps)
-					mls.SetUB(eps)
-					mls.SetX(0)
+					lsInit.SetLB(-eps)
+					lsInit.SetUB(eps)
+					lsInit.SetX(0)
 				} else {
-					mls.SetUB()
-					mls.SetLB()
-					mls.SetX(eps)
+					lsInit.SetUB()
+					lsInit.SetLB()
+					lsInit.SetX(eps)
 				}
 			} else {
-				mls.SetUB()
-				mls.SetLB()
-				mls.SetX(eps)
+				lsInit.SetUB()
+				lsInit.SetLB()
+				lsInit.SetX(eps)
 			}
-			sol.LineSearch.Solve(mls)
-			m.FunEvals += mls.FunEvals
+			lsRes := sol.LineSearch.Solve(lf[i], lsInit, lsParams)
+			m.FunEvals += lsRes.FunEvals
 
-			lambda[i] = lf[i].Dir * mls.X
+			lambda[i] = lf[i].Dir * lsRes.X
 			m.X.Axpy(lambda[i], d[i])
-			m.ObjX = mls.ObjX
+			m.ObjX = lsRes.ObjX
 		}
 
 		//Find new directions

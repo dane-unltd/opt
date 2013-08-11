@@ -6,12 +6,12 @@ import (
 )
 
 type SteepestDescent struct {
-	LineSearch uni.Solver
+	LineSearch uni.DerivSolver
 }
 
 func NewSteepestDescent() *SteepestDescent {
 	s := &SteepestDescent{
-		LineSearch: uni.NewArmijo(),
+		LineSearch: uni.DerivWrapper{uni.NewArmijo()},
 	}
 	return s
 }
@@ -28,20 +28,20 @@ func (sol *SteepestDescent) Solve(m *Model) {
 	d.Scal(-1)
 
 	lineFunc := NewLineFuncDeriv(m.grad, m.X, d)
-	mls := uni.NewModel(lineFunc)
+	lsInit := uni.NewSolution()
+	lsParams := uni.NewParams()
 
 	for ; m.Status == NotTerminated; m.update() {
-		mls.SetX(s)
-		mls.SetLB(0, m.ObjX, gLin)
-		mls.SetUB()
-		sol.LineSearch.Solve(mls)
-		if mls.Status < 0 {
-			m.Status = Status(mls.Status)
+		lsInit.SetX(s)
+		lsInit.SetLB(0, m.ObjX, gLin)
+		lsRes := sol.LineSearch.Solve(lineFunc, lsInit, lsParams)
+		if lsRes.Status < 0 {
+			m.Status = Status(lsRes.Status)
 			break
 		}
-		s, m.ObjX = mls.X, mls.ObjX
-		m.FunEvals += mls.FunEvals
-		m.GradEvals += mls.DerivEvals
+		s, m.ObjX = lsRes.X, lsRes.ObjX
+		m.FunEvals += lsRes.FunEvals
+		m.GradEvals += lsRes.DerivEvals
 
 		m.X.Axpy(s, d)
 

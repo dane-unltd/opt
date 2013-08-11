@@ -6,10 +6,6 @@ import (
 	"time"
 )
 
-type Callback interface {
-	Update(m *Model) Status
-}
-
 //Describes a multi-variate optimization problem.
 //The solvers in this package place the results in the different fields.
 type Model struct {
@@ -43,8 +39,6 @@ type Model struct {
 	oldX    mat.Vec
 	oldObjX float64
 	temp    mat.Vec
-
-	callbacks []Callback
 }
 
 func NewModel(n int, obj Function) *Model {
@@ -52,7 +46,6 @@ func NewModel(n int, obj Function) *Model {
 	m.Obj = obj
 	m.N = n
 	m.ObjX = math.NaN()
-	m.callbacks = make([]Callback, 0)
 	m.initialGradNorm = math.NaN()
 	m.gradNorm = math.NaN()
 	m.Params = Params{
@@ -94,25 +87,6 @@ func (m *Model) AddVar(x float64) {
 
 	m.ObjX = math.NaN()
 	m.GradX = nil
-}
-
-func (m *Model) AddCallback(cb Callback) {
-	m.callbacks = append(m.callbacks, cb)
-}
-
-func (m *Model) ClearCallbacks() {
-	m.callbacks = m.callbacks[0:0]
-}
-
-func (m *Model) doCallbacks() Status {
-	var status Status
-	for _, cb := range m.callbacks {
-		st := cb.Update(m)
-		if st != 0 {
-			status = st
-		}
-	}
-	return status
 }
 
 func (m *Model) checkConvergence() Status {
@@ -185,10 +159,6 @@ func (m *Model) update() Status {
 	m.Time = time.Since(m.initialTime)
 	if m.GradX != nil {
 		m.gradNorm = m.GradX.Nrm2()
-	}
-	if status := m.doCallbacks(); status != 0 {
-		m.Status = status
-		return m.Status
 	}
 	if status := m.checkConvergence(); status != 0 {
 		m.Status = status

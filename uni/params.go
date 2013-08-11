@@ -17,3 +17,20 @@ type Params struct {
 	TimeMax    time.Duration
 	FunEvalMax int
 }
+
+func NewParams() *Params {
+	return &Params{
+		FunTolAbs: 1e-15,
+		FunTolRel: 1e-15,
+		XTolAbs:   1e-6,
+		XTolRel:   1e-2,
+
+		Inexact:   true,
+		Armijo:    0.2,
+		Curvature: 0.9,
+
+		IterMax:    1000,
+		TimeMax:    time.Second,
+		FunEvalMax: 1000,
+	}
+}
