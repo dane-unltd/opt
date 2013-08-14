@@ -5,8 +5,7 @@ import (
 )
 
 //Exact line search for strictly quasi-convex functions
-type Quadratic struct {
-}
+type Quadratic struct{}
 
 func NewQuadratic() *Quadratic {
 	return &Quadratic{}
@@ -16,7 +15,7 @@ func (sol *Quadratic) Solve(o Function, in *Solution, p *Params) *Result {
 	r := NewResult(in)
 	obj := ObjWrapper{r: r, o: o}
 	r.init(obj)
-	h := NewHelper(r.Solution)
+	h := newHelper(r.Solution)
 
 	var eps float64
 

@@ -5,6 +5,8 @@ import (
 	"math"
 )
 
+var nan = math.NaN()
+
 type Solution struct {
 	X     mat.Vec
 	ObjX  float64
@@ -14,7 +16,7 @@ type Solution struct {
 func NewSolution(x mat.Vec) *Solution {
 	return &Solution{
 		X:     x,
-		ObjX:  math.NaN(),
+		ObjX:  nan,
 		GradX: nil,
 	}
 }
@@ -44,13 +46,13 @@ func (s *Solution) SetX(x mat.Vec, cpy bool) {
 	} else {
 		s.X = x
 	}
-	s.ObjX = math.NaN()
+	s.ObjX = nan
 	s.GradX = nil
 }
 
 func (s *Solution) AddVar(x float64) {
 	s.X = append(s.X, x)
 
-	s.ObjX = math.NaN()
+	s.ObjX = nan
 	s.GradX = nil
 }

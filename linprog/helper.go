@@ -4,25 +4,25 @@ import (
 	"time"
 )
 
-type Callback interface {
+type Updater interface {
 	Update(r *Result) Status
 }
 
 type helper struct {
 	initialTime time.Time
-	callbacks   []Callback
+	updates     []Updater
 }
 
-func NewHelper(cb []Callback) *helper {
+func newHelper(u []Updater) *helper {
 	h := &helper{}
 	h.initialTime = time.Now()
-	h.callbacks = cb
+	h.updates = u
 	return h
 }
 
-func (h *helper) doCallbacks(r *Result) Status {
-	for _, cb := range h.callbacks {
-		st := cb.Update(r)
+func (h *helper) doUpdates(r *Result) Status {
+	for _, u := range h.updates {
+		st := u.Update(r)
 		if st != 0 {
 			r.Status = st
 		}
@@ -32,7 +32,7 @@ func (h *helper) doCallbacks(r *Result) Status {
 
 func (h *helper) update(r *Result, p *Params) Status {
 	r.Time = time.Since(h.initialTime)
-	if h.doCallbacks(r); r.Status != 0 {
+	if h.doUpdates(r); r.Status != 0 {
 		return r.Status
 	}
 	if r.Status = h.checkConvergence(r, p); r.Status != 0 {

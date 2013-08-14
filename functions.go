@@ -55,8 +55,7 @@ func (Q *Quadratic) ValGrad(x, g mat.Vec) float64 {
 	return val
 }
 
-type Rosenbrock struct {
-}
+type Rosenbrock struct{}
 
 func (R Rosenbrock) Val(x mat.Vec) float64 {
 	sum := 0.0
@@ -85,8 +84,7 @@ func (R Rosenbrock) ValGrad(x, g mat.Vec) float64 {
 	return sum
 }
 
-type RealPlus struct {
-}
+type RealPlus struct{}
 
 func (R RealPlus) Project(x mat.Vec) {
 	for i := range x {

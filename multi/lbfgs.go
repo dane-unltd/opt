@@ -19,11 +19,11 @@ func NewLBFGS() *LBFGS {
 	return s
 }
 
-func (sol LBFGS) Solve(o Grad, in *Solution, p *Params, cb ...Callback) *Result {
+func (sol LBFGS) Solve(o Grad, in *Solution, p *Params, u ...Updater) *Result {
 	r := NewResult(in)
 	obj := ObjGradWrapper{r: r, o: o}
 	r.initGrad(obj)
-	h := NewHelper(r.Solution, cb)
+	h := newHelper(r.Solution, u)
 
 	stepSize := 1.0
 	gLin := 0.0

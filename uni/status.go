@@ -3,28 +3,31 @@ package uni
 type Status int
 
 const (
-	NotTerminated (Status) = 0
+	NotTerminated Status = iota
 
-	DerivAbsConv = 1
-	DerivRelConv = 2
+	DerivAbsConv
+	DerivRelConv
 
-	ObjAbsConv = 3
-	ObjRelConv = 4
+	ObjAbsConv
+	ObjRelConv
 
-	XAbsConv = 5
-	XRelConv = 6
+	XAbsConv
+	XRelConv
 
-	WolfeConv = 7
+	WolfeConv
 
-	Success = 8
+	Success
+)
 
-	IterLimit    = -1
-	TimeLimit    = -2
-	FunEvalLimit = -3
+// Failure
+const (
+	IterLimit Status = -(iota + 1)
+	TimeLimit
+	FunEvalLimit
 
-	NumericalToleranceReached = -4
+	NumericalToleranceReached
 
-	Infeasible = -5
+	Infeasible
 
-	Fail = -6
+	Fail
 )

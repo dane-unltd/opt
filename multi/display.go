@@ -1,7 +1,8 @@
 package multi
 
-import "fmt"
-import "math"
+import (
+	"fmt"
+)
 
 type Display struct {
 	Period int
@@ -12,7 +13,7 @@ func NewDisplay(p int) *Display {
 }
 
 func (dsp *Display) Update(r *Result) Status {
-	gradNorm := math.NaN()
+	gradNorm := nan
 	if r.GradX != nil {
 		gradNorm = r.GradX.Nrm2()
 	}

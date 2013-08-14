@@ -5,8 +5,7 @@ import (
 )
 
 //Inexact line search using Armijo's rule.
-type Armijo struct {
-}
+type Armijo struct{}
 
 func NewArmijo() *Armijo {
 	return &Armijo{}
@@ -16,7 +15,7 @@ func (s *Armijo) Solve(o Function, in *Solution, p *Params) *Result {
 	r := NewResult(in)
 	obj := ObjWrapper{r: r, o: o}
 	r.init(obj)
-	h := NewHelper(r.Solution)
+	h := newHelper(r.Solution)
 
 	beta := 0.5
 

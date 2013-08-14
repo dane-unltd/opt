@@ -4,8 +4,7 @@ import (
 	"math"
 )
 
-type Cubic struct {
-}
+type Cubic struct{}
 
 func NewCubic() *Cubic {
 	return &Cubic{}
@@ -15,7 +14,7 @@ func (sol *Cubic) Solve(o Deriv, in *Solution, p *Params) *Result {
 	r := NewResult(in)
 	obj := ObjDerivWrapper{r: r, o: o}
 	r.initDeriv(obj)
-	h := NewHelper(r.Solution)
+	h := newHelper(r.Solution)
 
 	eps := 0.4 * p.XTolAbs
 
