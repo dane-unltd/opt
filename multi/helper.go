@@ -32,13 +32,13 @@ func newHelper(in *Solution, u []Updater) *helper {
 	if in.GradX != nil {
 		h.initialGradNorm = in.GradX.Nrm2()
 	} else {
-		h.initialGradNorm = math.NaN()
+		h.initialGradNorm = nan
 	}
 
-	h.oldX = mat.NewVec(len(in.X)).Scal(math.NaN())
-	h.temp = mat.NewVec(len(in.X)).Scal(math.NaN())
-	h.oldObjX = math.NaN()
-	h.gradNorm = math.NaN()
+	h.oldX = mat.NewVec(len(in.X)).Scal(nan)
+	h.temp = mat.NewVec(len(in.X)).Scal(nan)
+	h.oldObjX = nan
+	h.gradNorm = nan
 	return h
 }
 

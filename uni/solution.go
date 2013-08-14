@@ -4,6 +4,8 @@ import (
 	"math"
 )
 
+var nan = math.NaN()
+
 type Solution struct {
 	X       float64
 	ObjX    float64
@@ -21,18 +23,18 @@ type Solution struct {
 
 func NewSolution() *Solution {
 	return &Solution{
-		X:       math.NaN(),
-		ObjX:    math.NaN(),
-		DerivX:  math.NaN(),
-		Deriv2X: math.NaN(),
+		X:       nan,
+		ObjX:    nan,
+		DerivX:  nan,
+		Deriv2X: nan,
 
 		LB:      0,
-		ObjLB:   math.NaN(),
-		DerivLB: math.NaN(),
+		ObjLB:   nan,
+		DerivLB: nan,
 
 		UB:      math.Inf(1),
-		ObjUB:   math.NaN(),
-		DerivUB: math.NaN(),
+		ObjUB:   nan,
+		DerivUB: nan,
 	}
 }
 
@@ -71,10 +73,10 @@ func (s *Solution) initDeriv(obj ObjDerivWrapper) {
 
 //sets X, ObjX, DerivX, Deriv2X, in that order
 func (s *Solution) SetX(xs ...float64) {
-	s.X = math.NaN()
-	s.ObjX = math.NaN()
-	s.DerivX = math.NaN()
-	s.Deriv2X = math.NaN()
+	s.X = nan
+	s.ObjX = nan
+	s.DerivX = nan
+	s.Deriv2X = nan
 
 	if len(xs) > 0 {
 		s.X = xs[0]
@@ -93,8 +95,8 @@ func (s *Solution) SetX(xs ...float64) {
 //sets LB, ObjLB, DerivLB, in that order
 func (s *Solution) SetLB(lbs ...float64) {
 	s.LB = 0
-	s.ObjLB = math.NaN()
-	s.DerivLB = math.NaN()
+	s.ObjLB = nan
+	s.DerivLB = nan
 
 	if len(lbs) > 0 {
 		s.LB = lbs[0]
@@ -113,8 +115,8 @@ func (s *Solution) SetLB(lbs ...float64) {
 //sets UB, ObjUB, DerivUB, in that order
 func (s *Solution) SetUB(ubs ...float64) {
 	s.UB = math.Inf(1)
-	s.ObjUB = math.NaN()
-	s.DerivUB = math.NaN()
+	s.ObjUB = nan
+	s.DerivUB = nan
 
 	if len(ubs) > 0 {
 		s.UB = ubs[0]

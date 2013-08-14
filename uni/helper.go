@@ -31,8 +31,8 @@ func newHelper(in *Solution) *helper {
 	h.f0 = in.ObjLB
 	h.d0 = in.DerivLB
 
-	h.oldX = math.NaN()
-	h.oldObjX = math.NaN()
+	h.oldX = nan
+	h.oldObjX = nan
 	return h
 }
 
