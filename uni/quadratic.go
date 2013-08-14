@@ -5,8 +5,7 @@ import (
 )
 
 //Exact line search for strictly quasi-convex functions
-type Quadratic struct {
-}
+type Quadratic struct{}
 
 func NewQuadratic() *Quadratic {
 	return &Quadratic{}

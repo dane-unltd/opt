@@ -5,8 +5,7 @@ import (
 )
 
 //Inexact line search using Armijo's rule.
-type Armijo struct {
-}
+type Armijo struct{}
 
 func NewArmijo() *Armijo {
 	return &Armijo{}

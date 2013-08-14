@@ -16,11 +16,11 @@ func NewRosenbrock() *Rosenbrock {
 	}
 }
 
-func (sol *Rosenbrock) Solve(o Function, in *Solution, p *Params, cb ...Callback) *Result {
+func (sol *Rosenbrock) Solve(o Function, in *Solution, p *Params, u ...Updater) *Result {
 	r := NewResult(in)
 	obj := ObjWrapper{r: r, o: o}
 	r.init(obj)
-	h := NewHelper(r.Solution, cb)
+	h := NewHelper(r.Solution, u)
 
 	eps := 1.0
 	n := len(r.X)

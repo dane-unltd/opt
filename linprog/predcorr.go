@@ -5,8 +5,7 @@ import (
 	"math"
 )
 
-type PredCorr struct {
-}
+type PredCorr struct{}
 
 func NewPredCorr() *PredCorr {
 	return &PredCorr{}
@@ -23,9 +22,9 @@ func checkKKT(r *Result, p *Params) Status {
 }
 
 //Predictor-Corrector Interior Point implementation
-func (sol *PredCorr) Solve(prob *Problem, p *Params, cb ...Callback) *Result {
+func (sol *PredCorr) Solve(prob *Problem, p *Params, u ...Updater) *Result {
 	res := NewResult(prob)
-	h := NewHelper(cb)
+	h := NewHelper(u)
 
 	A := prob.A
 

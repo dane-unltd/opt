@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-type Callback interface {
+type Updater interface {
 	Update(r *Result) Status
 }
 
@@ -19,15 +19,15 @@ type helper struct {
 	oldX    mat.Vec
 	oldObjX float64
 
-	callbacks []Callback
+	updates []Updater
 
 	temp mat.Vec
 }
 
-func NewHelper(in *Solution, cb []Callback) *helper {
+func NewHelper(in *Solution, u []Updater) *helper {
 	h := &helper{}
 	h.initialTime = time.Now()
-	h.callbacks = cb
+	h.updates = u
 
 	if in.GradX != nil {
 		h.initialGradNorm = in.GradX.Nrm2()
@@ -47,7 +47,7 @@ func (h *helper) update(r *Result, p *Params) Status {
 	if r.GradX != nil {
 		h.gradNorm = r.GradX.Nrm2()
 	}
-	if h.doCallbacks(r); r.Status != 0 {
+	if h.doUpdates(r); r.Status != 0 {
 		return r.Status
 	}
 	if r.Status = h.checkConvergence(r, p); r.Status != 0 {
@@ -61,9 +61,9 @@ func (h *helper) update(r *Result, p *Params) Status {
 	return r.Status
 }
 
-func (h *helper) doCallbacks(r *Result) Status {
-	for _, cb := range h.callbacks {
-		st := cb.Update(r)
+func (h *helper) doUpdates(r *Result) Status {
+	for _, u := range h.updates {
+		st := u.Update(r)
 		if st != 0 {
 			r.Status = st
 		}

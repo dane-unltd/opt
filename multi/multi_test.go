@@ -182,8 +182,7 @@ type rb struct {
 
 func (r rb) ValGrad() {}
 
-type rosTest struct {
-}
+type rosTest struct{}
 
 func (r rosTest) Val(x mat.Vec) float64 {
 	return math.Pow(x[0]-2, 4) + math.Pow(x[0]-2*x[1], 2)

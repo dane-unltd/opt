@@ -4,8 +4,7 @@ import (
 	"math"
 )
 
-type Cubic struct {
-}
+type Cubic struct{}
 
 func NewCubic() *Cubic {
 	return &Cubic{}
