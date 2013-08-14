@@ -3,16 +3,18 @@ package linprog
 type Status int
 
 const (
-	NotTerminated (Status) = 0
+	NotTerminated Status = iota
 
-	Success = 7
+	Success
+)
 
-	IterLimit = -1
-	TimeLimit = -2
+const (
+	IterLimit Status = -(iota + 1)
+	TimeLimit
 
-	NumericalToleranceReached = -3
+	NumericalToleranceReached
 
-	Infeasible = -4
+	Infeasible
 
-	Fail = -5
+	Fail
 )

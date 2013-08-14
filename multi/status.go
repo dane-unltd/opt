@@ -3,26 +3,28 @@ package multi
 type Status int
 
 const (
-	NotTerminated (Status) = 0
+	NotTerminated Status = iota
 
-	GradAbsConv = 1
-	GradRelConv = 2
+	GradAbsConv
+	GradRelConv
 
-	ObjAbsConv = 3
-	ObjRelConv = 4
+	ObjAbsConv
+	ObjRelConv
 
-	XAbsConv = 5
-	XRelConv = 6
+	XAbsConv
+	XRelConv
 
-	Success = 7
+	Success
+)
 
-	IterLimit    = -1
-	TimeLimit    = -2
-	FunEvalLimit = -3
+const (
+	IterLimit Status = -(iota + 1)
+	TimeLimit
+	FunEvalLimit
 
-	NumericalToleranceReached = -4
+	NumericalToleranceReached
 
-	Infeasible = -5
+	Infeasible
 
-	Fail = -6
+	Fail
 )
