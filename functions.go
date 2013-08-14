@@ -32,7 +32,7 @@ func NewQuadratic(A *mat.Dense, b mat.Vec, c float64) *Quadratic {
 
 func (Q *Quadratic) Val(x mat.Vec) float64 {
 	val := 0.0
-	Q.temp.Apply(Q.A, x)
+	Q.temp.Transform(Q.A, x)
 	val += mat.Dot(x, Q.temp)
 	val += mat.Dot(x, Q.B)
 	val += Q.C
@@ -42,9 +42,9 @@ func (Q *Quadratic) Val(x mat.Vec) float64 {
 func (Q *Quadratic) ValGrad(x, g mat.Vec) float64 {
 	At := Q.A.TrView()
 
-	Q.temp.Apply(Q.A, x)
+	Q.temp.Transform(Q.A, x)
 
-	g.Apply(At, x)
+	g.Transform(At, x)
 	g.Add(g, Q.temp)
 	g.Add(g, Q.B)
 

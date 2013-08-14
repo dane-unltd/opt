@@ -76,7 +76,7 @@ func (sol *PredCorr) Solve(prob *Problem, p *Params, cb ...Callback) *Result {
 	for {
 		res.Rd.Sub(prob.C, res.S)
 		res.Rd.AddMul(At, res.Y, -1)
-		res.Rp.Apply(A, res.X)
+		res.Rp.Transform(A, res.X)
 		res.Rp.Sub(prob.B, res.Rp)
 		res.Rs.Mul(res.X, res.S)
 		res.Rs.Neg(res.Rs)
@@ -99,7 +99,7 @@ func (sol *PredCorr) Solve(prob *Problem, p *Params, cb ...Callback) *Result {
 		//right hand side
 		nTemp1.Add(res.Rd, s)
 		nTemp1.Mul(nTemp1, xdivs)
-		rhs.Apply(A, nTemp1)
+		rhs.Transform(A, nTemp1)
 		rhs.Add(rhs, res.Rp)
 
 		//solving for dyAff
@@ -107,7 +107,7 @@ func (sol *PredCorr) Solve(prob *Problem, p *Params, cb ...Callback) *Result {
 		dyAff.Trsv(triU, soli)
 
 		//calculating other steps (dxAff, dsAff)
-		nTemp1.Apply(At, dyAff)
+		nTemp1.Transform(At, dyAff)
 		dxAff.Sub(nTemp1, res.Rd)
 		dxAff.Sub(dxAff, s)
 		dxAff.Mul(dxAff, xdivs)
@@ -154,14 +154,14 @@ func (sol *PredCorr) Solve(prob *Problem, p *Params, cb ...Callback) *Result {
 		nTemp1.Div(res.Rs, s)
 		nTemp1.Neg(nTemp1)
 
-		rhs.Apply(A, nTemp1)
+		rhs.Transform(A, nTemp1)
 
 		//solving for dyCC
 		soli.Trsv(triUt, rhs)
 		dyCC.Trsv(triU, soli)
 
 		//calculating other steps (dxAff, dsAff)
-		nTemp1.Apply(At, dyCC)
+		nTemp1.Transform(At, dyCC)
 		dxCC.Mul(nTemp1, x)
 		dxCC.Add(res.Rs, dxCC)
 		dxCC.Div(dxCC, s)

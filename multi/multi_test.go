@@ -64,9 +64,9 @@ func TestQuadratic(t *testing.T) {
 	AtA.Mul(At, A)
 
 	bTmp := mat.NewVec(n)
-	bTmp.Apply(A, xStar)
+	bTmp.Transform(A, xStar)
 	b := mat.NewVec(n)
-	b.Apply(At, bTmp)
+	b.Transform(At, bTmp)
 	b.Scal(-2)
 
 	c := bTmp.Nrm2Sq()

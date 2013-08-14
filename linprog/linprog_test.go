@@ -41,7 +41,7 @@ func TestLinprog2(t *testing.T) {
 
 	rd.Sub(c, result.S)
 	rd.AddMul(At, result.Y, -1)
-	rp.Apply(A, result.X)
+	rp.Transform(A, result.X)
 	rp.Sub(b, rp)
 	rs.Mul(result.X, result.S)
 	rs.Neg(rs)
@@ -68,7 +68,7 @@ func TestLinprog(t *testing.T) {
 	c := mat.RandVec(n)
 	b := mat.NewVec(m)
 	xt := mat.RandVec(n)
-	b.Apply(A, xt)
+	b.Transform(A, xt)
 
 	At := A.TrView()
 
@@ -83,7 +83,7 @@ func TestLinprog(t *testing.T) {
 
 	rd.Sub(c, result.S)
 	rd.AddMul(At, result.Y, -1)
-	rp.Apply(A, result.X)
+	rp.Transform(A, result.X)
 	rp.Sub(b, rp)
 	rs.Mul(result.X, result.S)
 	rs.Neg(rs)
@@ -109,7 +109,7 @@ func BenchmarkLinprog(bench *testing.B) {
 		c := mat.RandVec(n)
 		b := mat.NewVec(m)
 		xt := mat.RandVec(n)
-		b.Apply(A, xt)
+		b.Transform(A, xt)
 
 		At := A.TrView()
 
@@ -120,7 +120,7 @@ func BenchmarkLinprog(bench *testing.B) {
 
 		rd.Sub(c, result.S)
 		rd.AddMul(At, result.Y, -1)
-		rp.Apply(A, result.X)
+		rp.Transform(A, result.X)
 		rp.Sub(b, rp)
 		rs.Mul(result.X, result.S)
 		rs.Neg(rs)
