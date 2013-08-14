@@ -13,7 +13,7 @@ type helper struct {
 	updates     []Updater
 }
 
-func NewHelper(u []Updater) *helper {
+func newHelper(u []Updater) *helper {
 	h := &helper{}
 	h.initialTime = time.Now()
 	h.updates = u

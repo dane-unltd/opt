@@ -19,7 +19,7 @@ type helper struct {
 	oldObjX float64
 }
 
-func NewHelper(in *Solution) *helper {
+func newHelper(in *Solution) *helper {
 	h := &helper{}
 	h.initialTime = time.Now()
 	h.initialInterval = in.UB - in.LB

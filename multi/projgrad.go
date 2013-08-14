@@ -20,7 +20,7 @@ func (sol ProjGrad) Solve(o Grad, proj Projection, in *Solution, p *Params, u ..
 	r := NewResult(in)
 	obj := ObjGradWrapper{r: r, o: o}
 	r.initGrad(obj)
-	h := NewHelper(r.Solution, u)
+	h := newHelper(r.Solution, u)
 
 	n := len(r.X)
 	s := 1.0 //initial step size

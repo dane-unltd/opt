@@ -20,7 +20,7 @@ func (sol *Rosenbrock) Solve(o Function, in *Solution, p *Params, u ...Updater) 
 	r := NewResult(in)
 	obj := ObjWrapper{r: r, o: o}
 	r.init(obj)
-	h := NewHelper(r.Solution, u)
+	h := newHelper(r.Solution, u)
 
 	eps := 1.0
 	n := len(r.X)

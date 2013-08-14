@@ -24,7 +24,7 @@ type helper struct {
 	temp mat.Vec
 }
 
-func NewHelper(in *Solution, u []Updater) *helper {
+func newHelper(in *Solution, u []Updater) *helper {
 	h := &helper{}
 	h.initialTime = time.Now()
 	h.updates = u

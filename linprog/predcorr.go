@@ -24,7 +24,7 @@ func checkKKT(r *Result, p *Params) Status {
 //Predictor-Corrector Interior Point implementation
 func (sol *PredCorr) Solve(prob *Problem, p *Params, u ...Updater) *Result {
 	res := NewResult(prob)
-	h := NewHelper(u)
+	h := newHelper(u)
 
 	A := prob.A
 

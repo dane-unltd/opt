@@ -23,7 +23,7 @@ func (sol LBFGS) Solve(o Grad, in *Solution, p *Params, u ...Updater) *Result {
 	r := NewResult(in)
 	obj := ObjGradWrapper{r: r, o: o}
 	r.initGrad(obj)
-	h := NewHelper(r.Solution, u)
+	h := newHelper(r.Solution, u)
 
 	stepSize := 1.0
 	gLin := 0.0
