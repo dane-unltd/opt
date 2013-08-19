@@ -73,8 +73,8 @@ func (sol *PredCorr) Solve(prob *Problem, p *Params, u ...Updater) *Result {
 	nTemp1 := mat.NewVec(n)
 	nTemp2 := mat.NewVec(n)
 
-	alphaPrimal := 0.0
-	alphaDual := 0.0
+	alphaPrimal := 1.0
+	alphaDual := 1.0
 
 	for {
 		res.Rd.Sub(prob.C, res.S)
@@ -90,7 +90,11 @@ func (sol *PredCorr) Solve(prob *Problem, p *Params, u ...Updater) *Result {
 		if checkKKT(res, p); res.Status != 0 {
 			break
 		}
-		if x.Nrm2() > 1e10 && s.Nrm2() > 1e10 {
+		if mat.Dot(prob.C, x) < -1e10 {
+			res.Status = Unbounded
+			break
+		}
+		if mat.Dot(y, prob.B) > 1e10 || alphaPrimal < 1e-4 || alphaDual < 1e-4 {
 			res.Status = Infeasible
 			break
 		}

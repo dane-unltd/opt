@@ -60,15 +60,16 @@ func TestLinprog2(t *testing.T) {
 }
 
 func TestLinprog(t *testing.T) {
-	m := 400
-	n := 1000
+	m := 1000
+	n := 3000
 	tol := 1e-8
 
 	A := mat.RandN(m, n)
 	c := mat.RandVec(n)
-	b := mat.NewVec(m)
-	xt := mat.RandVec(n)
-	b.Transform(A, xt)
+	b := mat.RandVec(m)
+
+	//xt := mat.RandVec(n)
+	//b.Transform(A, xt)
 
 	At := A.TrView()
 
@@ -99,8 +100,8 @@ func TestLinprog(t *testing.T) {
 
 func BenchmarkLinprog(bench *testing.B) {
 	bench.StopTimer()
-	m := 50
-	n := 100
+	m := 100
+	n := 200
 	tol := 1e-3
 	rd := mat.NewVec(n)
 	rp := mat.NewVec(m)

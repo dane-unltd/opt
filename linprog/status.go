@@ -15,6 +15,7 @@ const (
 	NumericalToleranceReached
 
 	Infeasible
+	Unbounded
 
 	Fail
 )
