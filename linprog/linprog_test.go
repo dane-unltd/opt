@@ -60,7 +60,7 @@ func TestLinprog2(t *testing.T) {
 }
 
 func TestLinprog(t *testing.T) {
-	m := 500
+	m := 400
 	n := 1000
 	tol := 1e-8
 
@@ -77,9 +77,11 @@ func TestLinprog(t *testing.T) {
 	rs := mat.NewVec(n)
 
 	prob := NewStandard(c, A, b)
+	params := NewParams()
+	params.IterMax = 100
 
 	//Example for printing duality gap and infeasibilities
-	result := Solve(prob, nil, NewDisplay(2))
+	result := Solve(prob, params, NewDisplay(1))
 
 	rd.Sub(c, result.S)
 	rd.AddMul(At, result.Y, -1)
@@ -89,8 +91,8 @@ func TestLinprog(t *testing.T) {
 	rs.Neg(rs)
 
 	dev := (rd.Asum() + rp.Asum() + rs.Asum()) / float64(n)
-	if dev > tol {
-		t.Log(dev)
+	if !(dev < tol) {
+		t.Log(dev, result.Status)
 		t.Fail()
 	}
 }

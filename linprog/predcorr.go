@@ -34,6 +34,9 @@ func (sol *PredCorr) Solve(prob *Problem, p *Params, u ...Updater) *Result {
 
 	var mu, sigma float64
 
+	//parameter for step size scaling
+	gamma := 0.01
+
 	res.X.AddSc(1)
 	res.S.AddSc(1)
 
@@ -70,7 +73,8 @@ func (sol *PredCorr) Solve(prob *Problem, p *Params, u ...Updater) *Result {
 	nTemp1 := mat.NewVec(n)
 	nTemp2 := mat.NewVec(n)
 
-	alpha := 0.0
+	alphaPrimal := 0.0
+	alphaDual := 0.0
 
 	for {
 		res.Rd.Sub(prob.C, res.S)
@@ -86,6 +90,11 @@ func (sol *PredCorr) Solve(prob *Problem, p *Params, u ...Updater) *Result {
 		if checkKKT(res, p); res.Status != 0 {
 			break
 		}
+		if x.Nrm2() > 1e10 && s.Nrm2() > 1e10 {
+			res.Status = Infeasible
+			break
+		}
+
 		mu = res.Rs.Asum() / float64(n)
 
 		//determining left hand side
@@ -93,7 +102,11 @@ func (sol *PredCorr) Solve(prob *Problem, p *Params, u ...Updater) *Result {
 		lhs.Mul(temp, At)
 
 		//factorization
-		lhs.Chol(triU)
+		info := lhs.Chol(triU)
+		if info > 0 {
+			res.Status = Fail
+			break
+		}
 
 		//right hand side
 		nTemp1.Add(res.Rd, s)
@@ -116,30 +129,14 @@ func (sol *PredCorr) Solve(prob *Problem, p *Params, u ...Updater) *Result {
 		dsAff.Neg(dsAff)
 
 		//determining step size
-		alpha = 1.0
-		for i := range dxAff {
-			if dxAff[i] < 0 {
-				alph := -x[i] / dxAff[i]
-				if alph < alpha {
-					alpha = alph
-				}
-			}
-		}
-		for i := range dsAff {
-			if dsAff[i] < 0 {
-				alph := -s[i] / dsAff[i]
-				if alph < alpha {
-					alpha = alph
-				}
-			}
-		}
-		alpha *= 0.99995
+		alphaPrimal, _ = maxStep(x, dxAff)
+		alphaDual, _ = maxStep(s, dsAff)
 
 		//calculating duality gap measure for affine case
 		nTemp1.Copy(x)
-		nTemp1.Axpy(alpha, dxAff)
+		nTemp1.Axpy(alphaPrimal, dxAff)
 		nTemp2.Copy(s)
-		nTemp2.Axpy(alpha, dsAff)
+		nTemp2.Axpy(alphaDual, dsAff)
 		mu_aff := mat.Dot(nTemp1, nTemp2) / float64(n)
 
 		//centering parameter
@@ -173,28 +170,49 @@ func (sol *PredCorr) Solve(prob *Problem, p *Params, u ...Updater) *Result {
 		dy.Add(dyAff, dyCC)
 		ds.Add(dsAff, dsCC)
 
-		alpha = 1
-		for i := range dx {
-			if dx[i] < 0 {
-				alph := -x[i] / dx[i]
-				if alph < alpha {
-					alpha = alph
-				}
-			}
-		}
-		for i := range ds {
-			if ds[i] < 0 {
-				alph := -s[i] / ds[i]
-				if alph < alpha {
-					alpha = alph
-				}
-			}
-		}
-		alpha *= 0.99995
+		//determining step size
+		alphaPrimalMax, ixPrimal := maxStep(x, dx)
+		alphaDualMax, ixDual := maxStep(s, ds)
 
-		x.Axpy(alpha, dx)
-		y.Axpy(alpha, dy)
-		s.Axpy(alpha, ds)
+		//calculating duality gap measure with full step length
+		nTemp1.Copy(x)
+		nTemp1.Axpy(alphaPrimalMax, dx)
+		nTemp2.Copy(s)
+		nTemp2.Axpy(alphaDualMax, ds)
+		mu_f := mat.Dot(nTemp1, nTemp2) / float64(n)
+		nTemp1.Mul(nTemp1, nTemp2)
+
+		//step length calculations
+		alphaPrimal = 1
+		if ixPrimal >= 0 {
+			fPrimal := (gamma*mu_f/(s[ixPrimal]+alphaDualMax*ds[ixPrimal]) - x[ixPrimal]) / (alphaPrimalMax * dx[ixPrimal])
+			alphaPrimal = math.Max(1-gamma, fPrimal) * alphaPrimalMax
+		}
+		alphaDual = 1
+		if ixDual >= 0 {
+			fDual := (gamma*mu_f/(x[ixDual]+alphaPrimalMax*dx[ixDual]) - s[ixDual]) / (alphaDualMax * ds[ixDual])
+			alphaDual = math.Max(1-gamma, fDual) * alphaDualMax
+		}
+
+		x.Axpy(alphaPrimal, dx)
+		y.Axpy(alphaDual, dy)
+		s.Axpy(alphaDual, ds)
 	}
 	return res
+}
+
+//Maximum step-size in [0, 1] such that all elements stay positive
+func maxStep(x, dx mat.Vec) (alphaMax float64, ix int) {
+	alphaMax = 1.0
+	ix = -1
+	for i, d := range dx {
+		if d < 0 {
+			alph := -x[i] / d
+			if alph < alphaMax {
+				alphaMax = alph
+				ix = i
+			}
+		}
+	}
+	return
 }
