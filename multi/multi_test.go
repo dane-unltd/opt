@@ -2,7 +2,7 @@ package multi
 
 import (
 	"fmt"
-	"github.com/dane-unltd/linalg/clapack"
+	"github.com/dane-unltd/linalg/lapack/lapacke"
 	"github.com/dane-unltd/linalg/mat"
 	"github.com/dane-unltd/opt"
 	"github.com/dane-unltd/opt/uni"
@@ -13,7 +13,7 @@ import (
 
 var cops struct {
 	cblas.Blas
-	clapack.Lapack
+	lapacke.Lapack
 }
 
 func init() {

@@ -1,7 +1,7 @@
 package linprog
 
 import (
-	"github.com/dane-unltd/linalg/clapack"
+	"github.com/dane-unltd/linalg/lapack/lapacke"
 	"github.com/dane-unltd/linalg/mat"
 	"github.com/kortschak/cblas"
 	"testing"
@@ -9,7 +9,7 @@ import (
 
 type matops struct {
 	cblas.Blas
-	clapack.Lapack
+	lapacke.Lapack
 }
 
 func init() {
