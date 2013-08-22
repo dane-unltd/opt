@@ -3,7 +3,7 @@ package linprog
 import (
 	"github.com/dane-unltd/linalg/lapack/lapacke"
 	"github.com/dane-unltd/linalg/mat"
-	"github.com/kortschak/cblas"
+	"github.com/gonum/blas/cblas"
 	"testing"
 )
 

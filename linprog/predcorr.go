@@ -22,9 +22,9 @@ func checkKKT(r *Result, p *Params) Status {
 }
 
 //Predictor-Corrector Interior Point implementation
-func (sol *PredCorr) Solve(prob *Problem, p *Params, u ...Updater) *Result {
+func (sol *PredCorr) Solve(prob *Problem, p *Params, upd ...Updater) *Result {
 	res := NewResult(prob)
-	h := newHelper(u)
+	upd = append(upd, newBasicConv(p))
 
 	A := prob.A
 
@@ -84,7 +84,7 @@ func (sol *PredCorr) Solve(prob *Problem, p *Params, u ...Updater) *Result {
 		res.Rs.Mul(res.X, res.S)
 		res.Rs.Neg(res.Rs)
 
-		if h.update(res, p); res.Status != 0 {
+		if doUpdates(res, upd) != 0 {
 			break
 		}
 		if checkKKT(res, p); res.Status != 0 {

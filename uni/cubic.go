@@ -10,11 +10,11 @@ func NewCubic() *Cubic {
 	return &Cubic{}
 }
 
-func (sol *Cubic) Solve(o Deriv, in *Solution, p *Params) *Result {
+func (sol *Cubic) Solve(o Deriv, in *Solution, p *Params, upd ...Updater) *Result {
 	r := NewResult(in)
 	obj := ObjDerivWrapper{r: r, o: o}
 	r.initDeriv(obj)
-	h := newHelper(r.Solution)
+	conv := newBasicConv(r.Solution)
 
 	eps := 0.4 * p.XTolAbs
 
@@ -30,7 +30,7 @@ func (sol *Cubic) Solve(o Deriv, in *Solution, p *Params) *Result {
 			r.ObjUB = r.ObjX
 			r.DerivUB = r.DerivX
 		} else {
-			if r.ObjX-h.f0 > p.Armijo*h.d0*(r.X-h.x0) {
+			if r.ObjX-conv.f0 > p.Armijo*conv.d0*(r.X-conv.x0) {
 				r.UB = r.X
 				r.ObjUB = r.ObjX
 				r.DerivUB = r.DerivX
@@ -42,7 +42,10 @@ func (sol *Cubic) Solve(o Deriv, in *Solution, p *Params) *Result {
 
 				r.X += 2 * (r.X - lb)
 				r.ObjX, r.DerivX = obj.ValDeriv(r.X)
-				if h.update(r, p); r.Status != 0 {
+				if conv.update(r, p); r.Status != 0 {
+					return r
+				}
+				if doUpdates(r, upd); r.Status != 0 {
 					return r
 				}
 			}
@@ -81,7 +84,7 @@ func (sol *Cubic) Solve(o Deriv, in *Solution, p *Params) *Result {
 			r.ObjUB = r.ObjX
 			r.DerivUB = r.DerivX
 		} else {
-			if r.ObjX-h.f0 > p.Armijo*h.d0*(r.X-h.x0) {
+			if r.ObjX-conv.f0 > p.Armijo*conv.d0*(r.X-conv.x0) {
 				r.UB = r.X
 				r.ObjUB = r.ObjX
 				r.DerivUB = r.DerivX
@@ -92,8 +95,11 @@ func (sol *Cubic) Solve(o Deriv, in *Solution, p *Params) *Result {
 			}
 		}
 
-		if h.update(r, p); r.Status != 0 {
-			return r
+		if conv.update(r, p); r.Status != 0 {
+			break
+		}
+		if doUpdates(r, upd); r.Status != 0 {
+			break
 		}
 	}
 	return r

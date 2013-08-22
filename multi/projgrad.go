@@ -16,11 +16,11 @@ func NewProjGrad() *ProjGrad {
 	return s
 }
 
-func (sol ProjGrad) Solve(o Grad, proj Projection, in *Solution, p *Params, u ...Updater) *Result {
+func (sol ProjGrad) Solve(o Grad, proj Projection, in *Solution, p *Params, upd ...Updater) *Result {
 	r := NewResult(in)
 	obj := ObjGradWrapper{r: r, o: o}
 	r.initGrad(obj)
-	h := newHelper(r.Solution, u)
+	upd = append(upd, newBasicConv(r.Solution, p))
 
 	n := len(r.X)
 	s := 1.0 //initial step size
@@ -43,7 +43,7 @@ func (sol ProjGrad) Solve(o Grad, proj Projection, in *Solution, p *Params, u ..
 	lsInit := uni.NewSolution()
 	lsParams := uni.NewParams()
 
-	for ; r.Status == NotTerminated; h.update(r, p) {
+	for doUpdates(r, upd) == 0 {
 		lsInit.SetX(s)
 		lsInit.SetLB(0, r.ObjX, gLin)
 		lsRes := sol.LineSearch.Solve(lineFunc, lsInit, lsParams)

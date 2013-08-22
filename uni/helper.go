@@ -9,82 +9,67 @@ type Updater interface {
 	Update(r *Result) Status
 }
 
-type helper struct {
+type basicConv struct {
 	initialInterval float64
 	initialTime     time.Time
-	updates         []Updater
 	x0, f0, d0      float64
 
 	oldX    float64
 	oldObjX float64
 }
 
-func newHelper(in *Solution) *helper {
-	h := &helper{}
-	h.initialTime = time.Now()
-	h.initialInterval = in.UB - in.LB
-	if math.IsInf(h.initialInterval, 1) {
-		h.initialInterval = 0
+func newBasicConv(in *Solution) *basicConv {
+	conv := &basicConv{}
+	conv.initialTime = time.Now()
+	conv.initialInterval = in.UB - in.LB
+	if math.IsInf(conv.initialInterval, 1) {
+		conv.initialInterval = 0
 	}
 
-	h.x0 = in.LB
-	h.f0 = in.ObjLB
-	h.d0 = in.DerivLB
+	conv.x0 = in.LB
+	conv.f0 = in.ObjLB
+	conv.d0 = in.DerivLB
 
-	h.oldX = nan
-	h.oldObjX = nan
-	return h
+	conv.oldX = nan
+	conv.oldObjX = nan
+	return conv
 }
 
-func (h *helper) update(r *Result, p *Params) Status {
-	r.Time = time.Since(h.initialTime)
-	if h.doUpdates(r); r.Status != 0 {
-		return r.Status
-	}
-	if r.Status = h.checkConvergence(r, p); r.Status != 0 {
+func (conv *basicConv) update(r *Result, p *Params) Status {
+	if r.Status = conv.checkConvergence(r, p); r.Status != 0 {
 		return r.Status
 	}
 
-	h.oldX = r.X
-	h.oldObjX = r.ObjX
+	conv.oldX = r.X
+	conv.oldObjX = r.ObjX
 	r.Iter++
 
 	return r.Status
 }
 
-func (h *helper) doUpdates(r *Result) Status {
-	for _, u := range h.updates {
-		st := u.Update(r)
-		if st != 0 {
-			r.Status = st
-		}
-	}
-	return r.Status
-}
-
-func (h *helper) checkConvergence(r *Result, p *Params) Status {
+func (conv *basicConv) checkConvergence(r *Result, p *Params) Status {
 	if p.Inexact {
-		if math.Abs(r.DerivX/h.d0) < p.Curvature &&
-			r.ObjX-h.f0 < p.Armijo*(r.X-h.x0)*h.d0 {
+		if math.Abs(r.DerivX/conv.d0) < p.Curvature &&
+			r.ObjX-conv.f0 < p.Armijo*(r.X-conv.x0)*conv.d0 {
 			return WolfeConv
 		}
 	}
 	if math.Abs(r.UB-r.LB) < p.XTolAbs {
 		return XAbsConv
 	}
-	if math.Abs((r.UB-r.LB)/h.initialInterval) < p.XTolRel {
+	if math.Abs((r.UB-r.LB)/conv.initialInterval) < p.XTolRel {
 		return XRelConv
 	}
 	if math.Abs(r.DerivX) < p.FunTolAbs {
 		return DerivAbsConv
 	}
-	if math.Abs(r.DerivX/h.d0) < p.FunTolRel {
+	if math.Abs(r.DerivX/conv.d0) < p.FunTolRel {
 		return DerivRelConv
 	}
-	if math.Abs(r.ObjX-h.oldObjX) < p.FunTolAbs {
+	if math.Abs(r.ObjX-conv.oldObjX) < p.FunTolAbs {
 		return ObjAbsConv
 	}
-	if math.Abs((r.ObjX-h.oldObjX)/r.ObjX) < p.FunTolRel {
+	if math.Abs((r.ObjX-conv.oldObjX)/r.ObjX) < p.FunTolRel {
 		return ObjRelConv
 	}
 
@@ -98,4 +83,14 @@ func (h *helper) checkConvergence(r *Result, p *Params) Status {
 		return FunEvalLimit
 	}
 	return NotTerminated
+}
+
+func doUpdates(r *Result, upd []Updater) Status {
+	for _, u := range upd {
+		st := u.Update(r)
+		if st != 0 {
+			r.Status = st
+		}
+	}
+	return r.Status
 }

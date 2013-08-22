@@ -19,11 +19,11 @@ func NewLBFGS() *LBFGS {
 	return s
 }
 
-func (sol LBFGS) Solve(o Grad, in *Solution, p *Params, u ...Updater) *Result {
+func (sol LBFGS) Solve(o Grad, in *Solution, p *Params, upd ...Updater) *Result {
 	r := NewResult(in)
 	obj := ObjGradWrapper{r: r, o: o}
 	r.initGrad(obj)
-	h := newHelper(r.Solution, u)
+	upd = append(upd, newBasicConv(r.Solution, p))
 
 	stepSize := 1.0
 	gLin := 0.0
@@ -51,9 +51,10 @@ func (sol LBFGS) Solve(o Grad, in *Solution, p *Params, u ...Updater) *Result {
 	lsInit := uni.NewSolution()
 	lsParams := uni.NewParams()
 
-	for ; r.Status == NotTerminated; h.update(r, p) {
+	notFirst := false
+	for doUpdates(r, upd) == 0 {
 		d.Copy(r.GradX)
-		if r.Iter > 0 {
+		if notFirst {
 			yNew.Sub(r.GradX, gOld)
 			sNew.Sub(r.X, xOld)
 
@@ -78,6 +79,7 @@ func (sol LBFGS) Solve(o Grad, in *Solution, p *Params, u ...Updater) *Result {
 				d.Axpy(alphas[i]-betas[i], S[i])
 			}
 		}
+		notFirst = true
 
 		d.Scal(-1)
 

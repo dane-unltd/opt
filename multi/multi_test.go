@@ -6,7 +6,7 @@ import (
 	"github.com/dane-unltd/linalg/mat"
 	"github.com/dane-unltd/opt"
 	"github.com/dane-unltd/opt/uni"
-	"github.com/kortschak/cblas"
+	"github.com/gonum/blas/cblas"
 	"math"
 	"testing"
 )

@@ -11,11 +11,11 @@ func NewArmijo() *Armijo {
 	return &Armijo{}
 }
 
-func (s *Armijo) Solve(o Function, in *Solution, p *Params) *Result {
+func (s *Armijo) Solve(o Function, in *Solution, p *Params, upd ...Updater) *Result {
 	r := NewResult(in)
 	obj := ObjWrapper{r: r, o: o}
 	r.init(obj)
-	h := newHelper(r.Solution)
+	conv := newBasicConv(r.Solution)
 
 	beta := 0.5
 
@@ -41,7 +41,10 @@ func (s *Armijo) Solve(o Function, in *Solution, p *Params) *Result {
 			r.X = r.LB + step
 			r.ObjX = obj.Val(r.X)
 
-			if h.update(r, p); r.Status != 0 {
+			if conv.update(r, p); r.Status != 0 {
+				break
+			}
+			if doUpdates(r, upd); r.Status != 0 {
 				break
 			}
 
@@ -68,7 +71,10 @@ func (s *Armijo) Solve(o Function, in *Solution, p *Params) *Result {
 		for {
 			r.X = r.LB + step
 			r.ObjX = obj.Val(r.X)
-			if h.update(r, p); r.Status != 0 {
+			if conv.update(r, p); r.Status != 0 {
+				break
+			}
+			if doUpdates(r, upd); r.Status != 0 {
 				break
 			}
 

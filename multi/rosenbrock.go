@@ -16,11 +16,11 @@ func NewRosenbrock() *Rosenbrock {
 	}
 }
 
-func (sol *Rosenbrock) Solve(o Function, in *Solution, p *Params, u ...Updater) *Result {
+func (sol *Rosenbrock) Solve(o Function, in *Solution, p *Params, upd ...Updater) *Result {
 	r := NewResult(in)
 	obj := ObjWrapper{r: r, o: o}
 	r.init(obj)
-	h := newHelper(r.Solution, u)
+	upd = append(upd, newBasicConv(r.Solution, p))
 
 	eps := 1.0
 	n := len(r.X)
@@ -45,7 +45,7 @@ func (sol *Rosenbrock) Solve(o Function, in *Solution, p *Params, u ...Updater) 
 	lsParams.FunTolAbs = 0
 	lsParams.FunTolRel = 0
 
-	for ; r.Status == NotTerminated; h.update(r, p) {
+	for doUpdates(r, upd) == 0 {
 
 		//Search in all directions
 		for i := range d {

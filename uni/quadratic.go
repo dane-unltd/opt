@@ -11,11 +11,11 @@ func NewQuadratic() *Quadratic {
 	return &Quadratic{}
 }
 
-func (sol *Quadratic) Solve(o Function, in *Solution, p *Params) *Result {
+func (sol *Quadratic) Solve(o Function, in *Solution, p *Params, upd ...Updater) *Result {
 	r := NewResult(in)
 	obj := ObjWrapper{r: r, o: o}
 	r.init(obj)
-	h := newHelper(r.Solution)
+	conv := newBasicConv(r.Solution)
 
 	var eps float64
 
@@ -51,7 +51,10 @@ func (sol *Quadratic) Solve(o Function, in *Solution, p *Params) *Result {
 				r.UB = r.X + step
 				r.ObjUB = obj.Val(r.UB)
 
-				if h.update(r, p); r.Status != 0 {
+				if conv.update(r, p); r.Status != 0 {
+					return r
+				}
+				if doUpdates(r, upd); r.Status != 0 {
 					return r
 				}
 			}
@@ -71,15 +74,18 @@ func (sol *Quadratic) Solve(o Function, in *Solution, p *Params) *Result {
 				r.X = r.LB + step
 				r.ObjX = obj.Val(r.X)
 
-				if h.update(r, p); r.Status != 0 {
+				if conv.update(r, p); r.Status != 0 {
+					return r
+				}
+				if doUpdates(r, upd); r.Status != 0 {
 					return r
 				}
 			}
 		}
 	} else {
-		eps = math.Min(p.XTolAbs, p.XTolRel*h.initialInterval)
+		eps = math.Min(p.XTolAbs, p.XTolRel*conv.initialInterval)
 		if eps <= 0 {
-			eps = 0.01 * h.initialInterval
+			eps = 0.01 * conv.initialInterval
 		}
 		r.UB = r.UB
 		r.ObjUB = r.ObjUB
@@ -102,7 +108,10 @@ func (sol *Quadratic) Solve(o Function, in *Solution, p *Params) *Result {
 				r.X *= 0.5
 				r.ObjX = obj.Val(r.X)
 
-				if h.update(r, p); r.Status != 0 {
+				if conv.update(r, p); r.Status != 0 {
+					return r
+				}
+				if doUpdates(r, upd); r.Status != 0 {
 					return r
 				}
 			}
@@ -110,10 +119,10 @@ func (sol *Quadratic) Solve(o Function, in *Solution, p *Params) *Result {
 	}
 
 	if eps == 0 {
-		h.initialInterval = r.UB - r.LB
-		eps = math.Min(p.XTolAbs, p.XTolRel*h.initialInterval)
+		conv.initialInterval = r.UB - r.LB
+		eps = math.Min(p.XTolAbs, p.XTolRel*conv.initialInterval)
 		if eps == 0 {
-			eps = 0.01 * h.initialInterval
+			eps = 0.01 * conv.initialInterval
 		}
 	}
 
@@ -170,8 +179,11 @@ func (sol *Quadratic) Solve(o Function, in *Solution, p *Params) *Result {
 			}
 		}
 
-		if h.update(r, p); r.Status != 0 {
-			break
+		if conv.update(r, p); r.Status != 0 {
+			return r
+		}
+		if doUpdates(r, upd); r.Status != 0 {
+			return r
 		}
 	}
 	return r

@@ -8,47 +8,40 @@ type Updater interface {
 	Update(r *Result) Status
 }
 
-type helper struct {
+type basicConv struct {
 	initialTime time.Time
-	updates     []Updater
+	params      *Params
 }
 
-func newHelper(u []Updater) *helper {
-	h := &helper{}
-	h.initialTime = time.Now()
-	h.updates = u
-	return h
+func newBasicConv(p *Params) *basicConv {
+	conv := &basicConv{}
+	conv.initialTime = time.Now()
+	conv.params = p
+	return conv
 }
 
-func (h *helper) doUpdates(r *Result) Status {
-	for _, u := range h.updates {
+func (conv *basicConv) Update(r *Result) Status {
+	r.Time = time.Since(conv.initialTime)
+	r.Iter++
+	return conv.checkConvergence(r)
+}
+
+func (conv *basicConv) checkConvergence(r *Result) Status {
+	if r.Iter > conv.params.IterMax {
+		return IterLimit
+	}
+	if r.Time > conv.params.TimeMax {
+		return TimeLimit
+	}
+	return NotTerminated
+}
+
+func doUpdates(r *Result, upd []Updater) Status {
+	for _, u := range upd {
 		st := u.Update(r)
 		if st != 0 {
 			r.Status = st
 		}
 	}
 	return r.Status
-}
-
-func (h *helper) update(r *Result, p *Params) Status {
-	r.Time = time.Since(h.initialTime)
-	if h.doUpdates(r); r.Status != 0 {
-		return r.Status
-	}
-	if r.Status = h.checkConvergence(r, p); r.Status != 0 {
-		return r.Status
-	}
-	r.Iter++
-
-	return r.Status
-}
-
-func (h *helper) checkConvergence(r *Result, p *Params) Status {
-	if r.Iter > p.IterMax {
-		return IterLimit
-	}
-	if r.Time > p.TimeMax {
-		return TimeLimit
-	}
-	return NotTerminated
 }
