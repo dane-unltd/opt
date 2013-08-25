@@ -4,12 +4,8 @@ import "time"
 
 //Solver independent optimization parameters
 type Params struct {
-	FunTolAbs float64
-	FunTolRel float64
-	XTolAbs   float64
-	XTolRel   float64
+	Accuracy float64
 
-	Inexact   bool
 	Armijo    float64
 	Curvature float64
 
@@ -20,17 +16,29 @@ type Params struct {
 
 func NewParams() *Params {
 	return &Params{
-		FunTolAbs: 1e-15,
-		FunTolRel: 1e-15,
-		XTolAbs:   1e-6,
-		XTolRel:   1e-2,
+		Accuracy: 1e-3,
 
-		Inexact:   true,
 		Armijo:    0.2,
 		Curvature: 0.9,
 
 		IterMax:    1000,
 		TimeMax:    time.Second,
-		FunEvalMax: 1000,
+		FunEvalMax: 10000,
+	}
+}
+
+func addConvChecks(upd *[]Updater, p *Params, r *Result) {
+	(*upd) = append(*upd, Accuracy(p.Accuracy))
+	(*upd) = append(*upd, IterMax(p.IterMax))
+	(*upd) = append(*upd, TimeMax(p.TimeMax))
+	if p.Curvature > 0 {
+		w := Wolfe{
+			Armijo:    p.Armijo,
+			Curvature: p.Curvature,
+			X0:        r.XLower,
+			F0:        r.ObjLower,
+			Deriv0:    r.DerivLower,
+		}
+		(*upd) = append(*upd, w)
 	}
 }

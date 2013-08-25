@@ -2,6 +2,7 @@ package uni
 
 import (
 	"math"
+	"time"
 )
 
 //Exact line search for strictly quasi-convex functions
@@ -15,16 +16,19 @@ func (sol *Quadratic) Solve(o Function, in *Solution, p *Params, upd ...Updater)
 	r := NewResult(in)
 	obj := ObjWrapper{r: r, o: o}
 	r.init(obj)
-	conv := newBasicConv(r.Solution)
 
-	var eps float64
+	addConvChecks(&upd, p, r)
+
+	initialTime := time.Now()
 
 	fNew := 0.0
 	xNew := 0.0
 
-	if math.IsInf(r.UB, 1) {
+	eps := 0.4 * p.Accuracy
+
+	if math.IsInf(r.XUpper, 1) {
 		xNew = r.X
-		fNew = r.ObjX
+		fNew = r.Obj
 		if math.IsNaN(xNew) {
 			xNew = 1
 			fNew = obj.Val(xNew)
@@ -33,156 +37,132 @@ func (sol *Quadratic) Solve(o Function, in *Solution, p *Params, upd ...Updater)
 			fNew = obj.Val(xNew)
 		}
 
-		step := r.X - r.LB
-		if fNew < r.ObjLB {
-			r.ObjX = fNew
+		step := r.X - r.XLower
+		if fNew < r.ObjLower {
+			r.Obj = fNew
 			r.X = xNew
 
-			r.UB = r.X + step
-			r.ObjUB = obj.Val(r.UB)
-			for r.ObjUB <= r.ObjX {
-				r.LB = r.X
-				r.ObjLB = r.ObjX
+			r.XUpper = r.X + step
+			r.ObjUpper = obj.Val(r.XUpper)
+			for r.ObjUpper <= r.Obj {
+				r.XLower = r.X
+				r.ObjLower = r.Obj
 
-				r.X = r.UB
-				r.ObjX = r.ObjUB
+				r.X = r.XUpper
+				r.Obj = r.ObjUpper
 
 				step *= 2
-				r.UB = r.X + step
-				r.ObjUB = obj.Val(r.UB)
+				r.XUpper = r.X + step
+				r.ObjUpper = obj.Val(r.XUpper)
 
-				if conv.update(r, p); r.Status != 0 {
-					return r
-				}
-				if doUpdates(r, upd); r.Status != 0 {
+				if doUpdates(r, initialTime, upd) != 0 {
 					return r
 				}
 			}
 		} else {
-			r.ObjUB = fNew
-			r.UB = xNew
+			r.ObjUpper = fNew
+			r.XUpper = xNew
 
 			step *= 0.5
 
-			r.X = r.LB + step
-			r.ObjX = obj.Val(r.X)
-			for r.ObjX >= r.ObjLB {
-				r.UB = r.X
-				r.ObjUB = r.ObjX
+			r.X = r.XLower + step
+			r.Obj = obj.Val(r.X)
+			for r.Obj >= r.ObjLower {
+				r.XUpper = r.X
+				r.ObjUpper = r.Obj
 
 				step *= 0.5
-				r.X = r.LB + step
-				r.ObjX = obj.Val(r.X)
+				r.X = r.XLower + step
+				r.Obj = obj.Val(r.X)
 
-				if conv.update(r, p); r.Status != 0 {
-					return r
-				}
-				if doUpdates(r, upd); r.Status != 0 {
+				if doUpdates(r, initialTime, upd) != 0 {
 					return r
 				}
 			}
 		}
 	} else {
-		eps = math.Min(p.XTolAbs, p.XTolRel*conv.initialInterval)
-		if eps <= 0 {
-			eps = 0.01 * conv.initialInterval
+		r.XUpper = r.XUpper
+		r.ObjUpper = r.ObjUpper
+		if math.IsNaN(r.ObjUpper) {
+			r.ObjUpper = obj.Val(r.XUpper)
 		}
-		r.UB = r.UB
-		r.ObjUB = r.ObjUB
-		if math.IsNaN(r.ObjUB) {
-			r.ObjUB = obj.Val(r.UB)
-		}
-		if r.ObjUB < r.ObjLB {
-			r.X = r.UB - eps
-			r.ObjX = obj.Val(r.X)
-			if r.ObjX >= r.ObjUB {
-				r.X = r.UB
-				r.ObjX = r.ObjUB
+		if r.ObjUpper < r.ObjLower {
+			r.X = r.XUpper - eps
+			r.Obj = obj.Val(r.X)
+			if r.Obj >= r.ObjUpper {
+				r.X = r.XUpper
+				r.Obj = r.ObjUpper
 				r.Status = XRelConv
 				return r
 			}
 		} else {
-			r.X = 0.5 * r.UB
-			r.ObjX = obj.Val(r.X)
-			for r.ObjX >= r.ObjLB {
+			r.X = 0.5 * r.XUpper
+			r.Obj = obj.Val(r.X)
+			for r.Obj >= r.ObjLower {
 				r.X *= 0.5
-				r.ObjX = obj.Val(r.X)
+				r.Obj = obj.Val(r.X)
 
-				if conv.update(r, p); r.Status != 0 {
-					return r
-				}
-				if doUpdates(r, upd); r.Status != 0 {
+				if doUpdates(r, initialTime, upd) != 0 {
 					return r
 				}
 			}
-		}
-	}
-
-	if eps == 0 {
-		conv.initialInterval = r.UB - r.LB
-		eps = math.Min(p.XTolAbs, p.XTolRel*conv.initialInterval)
-		if eps == 0 {
-			eps = 0.01 * conv.initialInterval
 		}
 	}
 
 	for {
 		//optimum of quadratic fit
-		xNew = -0.5 * (r.UB*r.UB*(r.ObjLB-r.ObjX) + r.X*r.X*(r.ObjUB-r.ObjLB) + r.LB*r.LB*(r.ObjX-r.ObjUB)) /
-			(r.UB*(r.ObjX-r.ObjLB) + r.X*(r.ObjLB-r.ObjUB) + r.LB*(r.ObjUB-r.ObjX))
+		xNew = -0.5 * (r.XUpper*r.XUpper*(r.ObjLower-r.Obj) + r.X*r.X*(r.ObjUpper-r.ObjLower) + r.XLower*r.XLower*(r.Obj-r.ObjUpper)) /
+			(r.XUpper*(r.Obj-r.ObjLower) + r.X*(r.ObjLower-r.ObjUpper) + r.XLower*(r.ObjUpper-r.Obj))
 
-		if math.Abs(r.LB-xNew) < 0.4*eps {
-			xNew = r.LB + 0.4*eps
+		if math.Abs(r.XLower-xNew) < eps {
+			xNew = r.XLower + eps
 		}
-		if math.Abs(r.UB-xNew) < 0.4*eps {
-			xNew = r.UB - 0.4*eps
+		if math.Abs(r.XUpper-xNew) < eps {
+			xNew = r.XUpper - eps
 		}
-		if math.Abs(r.X-xNew) < 0.4*eps {
-			if r.UB-r.X > r.X-r.LB {
-				xNew = r.X + 0.4*eps
+		if math.Abs(r.X-xNew) < eps {
+			if r.XUpper-r.X > r.X-r.XLower {
+				xNew = r.X + eps
 			} else {
-				xNew = r.X - 0.4*eps
+				xNew = r.X - eps
 			}
 		}
 
 		fNew = obj.Val(xNew)
 
-		if !(xNew > r.LB && xNew < r.UB) || (xNew < r.X && fNew > r.ObjLB) ||
-			(xNew > r.X && fNew > r.ObjUB) {
-			if r.UB-r.X > r.X-r.LB {
-				xNew = (r.X + r.UB) / 2
+		if !(xNew > r.XLower && xNew < r.XUpper) || (xNew < r.X && fNew > r.ObjLower) ||
+			(xNew > r.X && fNew > r.ObjUpper) {
+			if r.XUpper-r.X > r.X-r.XLower {
+				xNew = (r.X + r.XUpper) / 2
 			} else {
-				xNew = (r.X + r.LB) / 2
+				xNew = (r.X + r.XLower) / 2
 			}
 			fNew = obj.Val(xNew)
 		}
 
 		if xNew > r.X {
-			if fNew >= r.ObjX {
-				r.UB = xNew
-				r.ObjUB = fNew
+			if fNew >= r.Obj {
+				r.XUpper = xNew
+				r.ObjUpper = fNew
 			} else {
-				r.LB = r.X
-				r.ObjLB = r.ObjX
+				r.XLower = r.X
+				r.ObjLower = r.Obj
 				r.X = xNew
-				r.ObjX = fNew
+				r.Obj = fNew
 			}
 		} else {
-			if fNew >= r.ObjX {
-				r.LB = xNew
-				r.ObjLB = fNew
+			if fNew >= r.Obj {
+				r.XLower = xNew
+				r.ObjLower = fNew
 			} else {
-				r.UB = r.X
-				r.ObjUB = r.ObjX
+				r.XUpper = r.X
+				r.ObjUpper = r.Obj
 				r.X = xNew
-				r.ObjX = fNew
+				r.Obj = fNew
 			}
 		}
 
-		if conv.update(r, p); r.Status != 0 {
-			return r
-		}
-		if doUpdates(r, upd); r.Status != 0 {
+		if doUpdates(r, initialTime, upd) != 0 {
 			return r
 		}
 	}

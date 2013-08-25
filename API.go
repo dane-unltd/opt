@@ -1,3 +1,5 @@
+// +build ignore
+
 //objective function
 type F interface {
    F(x float64) float64

@@ -41,16 +41,12 @@ func (s SumExpStruct) OptLoc() float64 {
 func TestUni(t *testing.T) {
 	fun := SumExpStruct{}
 
-	p := NewParams()
-	p.FunTolAbs = 0
-	p.FunTolRel = 0
-
 	in := NewSolution()
 	in.SetX(0.5)
-	in.ObjLB, in.DerivLB = fun.ValDeriv(in.LB)
+	in.ObjLower, in.DerivLower = fun.ValDeriv(in.LB)
 
 	t.Log(fun, in, p)
-	r := NewQuadratic().Solve(fun, in, p)
+	r := NewQuadratic().Solve(fun, in, p, IterMax(4))
 
 	t.Log(r.LB, r.X, r.UB, r.Status)
 	t.Log(r.ObjX - fun.OptVal())
@@ -60,7 +56,7 @@ func TestUni(t *testing.T) {
 		t.Fail()
 	}
 
-	r = NewArmijo().Solve(fun, in, p)
+	r = NewArmijo().Solve(fun, in, p, IterMax(4))
 	t.Log(r.FunEvals, r.Status)
 
 	if r.ObjX >= r.ObjLB {
@@ -70,7 +66,7 @@ func TestUni(t *testing.T) {
 	p.IterMax = 10
 	p.Inexact = false
 
-	r = NewCubic().Solve(fun, in, p)
+	r = NewCubic().Solve(fun, in, p, IterMax(4))
 
 	t.Log(r.LB, r.X, r.UB, r.Status)
 	t.Log(r.ObjX - fun.OptVal())
