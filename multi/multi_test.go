@@ -129,13 +129,14 @@ func TestRosenbrock(t *testing.T) {
 
 	//Steepest descent with Backtracking
 	stDesc := NewSteepestDescent()
-	res1 := stDesc.OptimizeFdF(obj, sol, GradConv{1e-6}, NewDisplay(100))
+	stDesc.IterMax = 10000
+	res1 := stDesc.OptimizeFdF(obj, sol, GradConv{1e-6}, NewDisplay(1000))
 
 	t.Log(res1.Obj, res1.FunEvals, res1.GradEvals, res1.Status)
 
 	//Steepest descent with Qubic
 	stDesc.LineSearch = uni.NewCubic()
-	res2 := stDesc.OptimizeFdF(obj, sol, GradConv{1e-6}, NewDisplay(100))
+	res2 := stDesc.OptimizeFdF(obj, sol, GradConv{1e-6}, NewDisplay(1000))
 
 	t.Log(res2.Obj, res2.FunEvals, res2.GradEvals, res2.Status)
 
@@ -183,7 +184,7 @@ func TestSolve(t *testing.T) {
 	xInit := mat.RandVec(10).Scal(10.0)
 	sol := NewSolution(xInit)
 
-	result := OptimizeF(opt.Rosenbrock{}, sol, nil, NewDisplay(10))
+	result := OptimizeF(opt.Rosenbrock{}, sol, nil, NewDeltaXConv(1e-6), NewDisplay(10))
 
 	t.Log(result.Status, result.Obj, result.Iter)
 	if math.Abs(result.Obj) > 0.1 {
@@ -194,13 +195,13 @@ func TestSolve(t *testing.T) {
 	params.IterMax = 100000
 
 	result = OptimizeFProj(opt.Rosenbrock{}, opt.RealPlus{}, sol,
-		params, NewDisplay(1000))
+		params, NewDisplay(10000))
 	t.Log(result.Status, result.Obj, result.Iter)
 
-	params.Accuracy = 1e-9
+	params.Accuracy = 1e-5
 	params.IterMax = 1000
 
-	result = OptimizeF(rb{}, sol, params, NewDisplay(10))
+	result = OptimizeF(rb{}, sol, params, NewDisplay(3))
 	t.Log(result.Status, result.Obj, result.Iter, result.X)
 
 	xInit = mat.Vec{0, 3}

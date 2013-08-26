@@ -65,23 +65,23 @@ func (sol *Rosenbrock) OptimizeF(o F, in *Solution, upd ...Updater) *Result {
 				lf[i].Dir = -1
 				valNeg = lf[i].F(eps)
 				if valNeg >= r.Obj {
-					eps *= 0.5
 					lf[i].Dir = 1
-					lsInit.SetLower(-eps)
-					lsInit.SetUpper(eps)
-					lsInit.Set(0)
+					lsInit.SetLower(-eps, valNeg)
+					lsInit.SetUpper(eps, valPos)
+					lsInit.Set(0, r.Obj)
+					eps *= 0.5
 				} else {
 					lsInit.SetUpper()
 					lsInit.SetLower()
-					lsInit.Set(eps)
+					lsInit.Set(eps, valNeg)
 				}
 			} else {
 				lsInit.SetUpper()
 				lsInit.SetLower()
-				lsInit.Set(eps)
+				lsInit.Set(eps, valPos)
 			}
 			lsRes := sol.LineSearch.OptimizeF(lf[i], lsInit,
-				uni.Accuracy(sol.Accuracy))
+				uni.Accuracy(eps*0.5))
 
 			lambda[i] = lf[i].Dir * lsRes.X
 			r.X.Axpy(lambda[i], d[i])

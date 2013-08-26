@@ -3,18 +3,30 @@ package linprog
 import (
 	"github.com/dane-unltd/linalg/mat"
 	"math"
+	"time"
 )
 
-type PredCorr struct{}
-
-func NewPredCorr() *PredCorr {
-	return &PredCorr{}
+type PredCorr struct {
+	Params
 }
 
-func checkKKT(r *Result, p *Params) Status {
-	if r.Rd.Asum() < p.Infeasibility &&
-		r.Rp.Asum() < p.Infeasibility &&
-		r.Rs.Asum() < p.DualityGap {
+func NewPredCorr() *PredCorr {
+	return &PredCorr{
+		Params: Params{
+			Termination: Termination{
+				IterMax: 1000,
+				TimeMax: time.Minute,
+			},
+			Infeasibility: 1e-8,
+			DualityGap:    1e-8,
+		},
+	}
+}
+
+func (sol *PredCorr) checkKKT(r *Result) Status {
+	if r.Rd.Asum() < sol.Infeasibility &&
+		r.Rp.Asum() < sol.Infeasibility &&
+		r.Rs.Asum() < sol.DualityGap {
 		r.Status = Success
 		return r.Status
 	}
@@ -22,9 +34,12 @@ func checkKKT(r *Result, p *Params) Status {
 }
 
 //Predictor-Corrector Interior Point implementation
-func (sol *PredCorr) Solve(prob *Problem, p *Params, upd ...Updater) *Result {
+func (sol *PredCorr) Solve(prob *Problem, upd ...Updater) *Result {
 	res := NewResult(prob)
-	upd = append(upd, newBasicConv(p))
+
+	upd = append(upd, sol.Params.Termination)
+
+	initialTime := time.Now()
 
 	A := prob.A
 
@@ -84,10 +99,10 @@ func (sol *PredCorr) Solve(prob *Problem, p *Params, upd ...Updater) *Result {
 		res.Rs.Mul(res.X, res.S)
 		res.Rs.Neg(res.Rs)
 
-		if doUpdates(res, upd) != 0 {
+		if doUpdates(res, initialTime, upd) != 0 {
 			break
 		}
-		if checkKKT(res, p); res.Status != 0 {
+		if sol.checkKKT(res); res.Status != 0 {
 			break
 		}
 		if mat.Dot(prob.C, x) < -1e10 {

@@ -11,7 +11,7 @@ type Stats struct {
 }
 
 type Result struct {
-	*Solution
+	Solution
 	Rp, Rd, Rs mat.Vec
 	Stats
 	Status Status
@@ -19,7 +19,6 @@ type Result struct {
 
 func NewResult(prob *Problem) *Result {
 	r := &Result{}
-	r.Solution = &Solution{}
 	m, n := prob.A.Dims()
 	r.X = mat.NewVec(n)
 	r.S = mat.NewVec(n)
