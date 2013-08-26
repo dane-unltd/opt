@@ -1,27 +1,32 @@
 package uni
 
-type ObjWrapper struct {
+type fWrapper struct {
 	r *Result
-	o Function
+	f F
 }
 
-func (f ObjWrapper) Val(x float64) float64 {
-	f.r.FunEvals++
-	return f.o.Val(x)
+func (wrap fWrapper) F(x float64) float64 {
+	wrap.r.FunEvals++
+	return wrap.f.F(x)
 }
 
-type ObjDerivWrapper struct {
-	r *Result
-	o Deriv
+type fdfWrapper struct {
+	r   *Result
+	fdf FdF
 }
 
-func (f ObjDerivWrapper) Val(x float64) float64 {
-	f.r.FunEvals++
-	return f.o.Val(x)
+func (wrap fdfWrapper) F(x float64) float64 {
+	wrap.r.FunEvals++
+	return wrap.fdf.F(x)
 }
 
-func (f ObjDerivWrapper) ValDeriv(x float64) (float64, float64) {
-	f.r.FunEvals++
-	f.r.DerivEvals++
-	return f.o.ValDeriv(x)
+func (wrap fdfWrapper) DF(x float64) float64 {
+	wrap.r.DerivEvals++
+	return wrap.fdf.DF(x)
+}
+
+func (wrap fdfWrapper) FdF(x float64) (float64, float64) {
+	wrap.r.FunEvals++
+	wrap.r.DerivEvals++
+	return wrap.fdf.FdF(x)
 }

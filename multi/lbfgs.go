@@ -4,28 +4,36 @@ import (
 	"fmt"
 	"github.com/dane-unltd/linalg/mat"
 	"github.com/dane-unltd/opt/uni"
+	"time"
 )
 
 type LBFGS struct {
+	Termination
 	Mem        int
-	LineSearch uni.DerivSolver
+	LineSearch uni.FdFOptimizer
 }
 
 func NewLBFGS() *LBFGS {
 	s := &LBFGS{
+		Termination: Termination{
+			IterMax: 1000,
+			TimeMax: time.Minute,
+		},
 		Mem:        5,
-		LineSearch: uni.DerivWrapper{uni.NewArmijo()},
+		LineSearch: uni.NewCubic(),
 	}
 	return s
 }
 
-func (sol LBFGS) Solve(o Grad, in *Solution, p *Params, upd ...Updater) *Result {
+func (sol LBFGS) OptimizeFdF(o FdF, in *Solution, upd ...Updater) *Result {
 	r := NewResult(in)
-	obj := ObjGradWrapper{r: r, o: o}
-	r.initGrad(obj)
-	upd = append(upd, newBasicConv(r.Solution, p))
+	obj := fdfWrapper{r: r, fdf: o}
+	r.initFdF(obj)
 
-	stepSize := 1.0
+	upd = append(upd, sol.Termination)
+
+	initialTime := time.Now()
+
 	gLin := 0.0
 	n := len(r.X)
 
@@ -47,15 +55,14 @@ func (sol LBFGS) Solve(o Grad, in *Solution, p *Params, upd ...Updater) *Result 
 	betas := mat.NewVec(sol.Mem)
 	rhos := mat.NewVec(sol.Mem)
 
-	lineFunc := NewLineFuncDeriv(obj, r.X, d)
+	lineFunc := NewLineFdF(obj, r.X, d)
 	lsInit := uni.NewSolution()
-	lsParams := uni.NewParams()
 
 	notFirst := false
-	for doUpdates(r, upd) == 0 {
-		d.Copy(r.GradX)
+	for doUpdates(r, initialTime, upd) == 0 {
+		d.Copy(r.Grad)
 		if notFirst {
-			yNew.Sub(r.GradX, gOld)
+			yNew.Sub(r.Grad, gOld)
 			sNew.Sub(r.X, xOld)
 
 			temp := S[len(S)-1]
@@ -83,17 +90,25 @@ func (sol LBFGS) Solve(o Grad, in *Solution, p *Params, upd ...Updater) *Result 
 
 		d.Scal(-1)
 
-		gLin = mat.Dot(d, r.GradX)
+		gLin = mat.Dot(d, r.Grad)
 
-		lsInit.SetX(stepSize)
-		lsInit.SetLB(0, r.ObjX, gLin)
-		lsRes := sol.LineSearch.Solve(lineFunc, lsInit, lsParams)
+		wolfe := uni.Wolfe{
+			Armijo:    0.2,
+			Curvature: 0.9,
+			X0:        0,
+			F0:        r.Obj,
+			Deriv0:    gLin,
+		}
+
+		lsInit.Set(1.0)
+		lsInit.SetLower(0, r.Obj, gLin)
+		lsRes := sol.LineSearch.OptimizeFdF(lineFunc, lsInit, wolfe)
 		if lsRes.Status < 0 {
 			fmt.Println("Linesearch:", lsRes.Status)
-			d.Copy(r.GradX)
+			d.Copy(r.Grad)
 			d.Scal(-1)
-			lsInit.SetLB(0, r.ObjX, -r.GradX.Nrm2Sq())
-			lsRes = sol.LineSearch.Solve(lineFunc, lsInit, lsParams)
+			lsInit.SetLower(0, r.Obj, -r.Grad.Nrm2Sq())
+			lsRes = sol.LineSearch.OptimizeFdF(lineFunc, lsInit, wolfe)
 			if lsRes.Status < 0 {
 				fmt.Println("Linesearch:", lsRes.Status)
 				r.Status = Status(lsRes.Status)
@@ -101,13 +116,14 @@ func (sol LBFGS) Solve(o Grad, in *Solution, p *Params, upd ...Updater) *Result 
 				break
 			}
 		}
-		stepSize, r.ObjX = lsRes.X, lsRes.ObjX
+		stepSize := lsRes.X
+		r.Obj = lsRes.Obj
 
 		xOld.Copy(r.X)
-		gOld.Copy(r.GradX)
+		gOld.Copy(r.Grad)
 
 		r.X.Axpy(stepSize, d)
-		obj.ValGrad(r.X, r.GradX)
+		obj.DF(r.X, r.Grad)
 	}
 	return r
 }

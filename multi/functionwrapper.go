@@ -4,28 +4,33 @@ import (
 	"github.com/dane-unltd/linalg/mat"
 )
 
-type ObjWrapper struct {
+type fWrapper struct {
 	r *Result
-	o Function
+	f F
 }
 
-func (f ObjWrapper) Val(x mat.Vec) float64 {
-	f.r.FunEvals++
-	return f.o.Val(x)
+func (wrap fWrapper) F(x mat.Vec) float64 {
+	wrap.r.FunEvals++
+	return wrap.f.F(x)
 }
 
-type ObjGradWrapper struct {
-	r *Result
-	o Grad
+type fdfWrapper struct {
+	r   *Result
+	fdf FdF
 }
 
-func (f ObjGradWrapper) Val(x mat.Vec) float64 {
-	f.r.FunEvals++
-	return f.o.Val(x)
+func (wrap fdfWrapper) F(x mat.Vec) float64 {
+	wrap.r.FunEvals++
+	return wrap.fdf.F(x)
 }
 
-func (f ObjGradWrapper) ValGrad(x, g mat.Vec) float64 {
-	f.r.FunEvals++
-	f.r.GradEvals++
-	return f.o.ValGrad(x, g)
+func (wrap fdfWrapper) DF(x, g mat.Vec) {
+	wrap.r.GradEvals++
+	wrap.fdf.DF(x, g)
+}
+
+func (wrap fdfWrapper) FdF(x, g mat.Vec) float64 {
+	wrap.r.FunEvals++
+	wrap.r.GradEvals++
+	return wrap.fdf.FdF(x, g)
 }

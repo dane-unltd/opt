@@ -38,7 +38,7 @@ func NewSolution() *Solution {
 	}
 }
 
-func (s *Solution) init(obj ObjWrapper) {
+func (s *Solution) initF(obj fWrapper) {
 	if math.IsNaN(s.X) || s.X <= s.XLower || s.X >= s.XUpper {
 		if math.IsInf(s.XUpper, 1) {
 			s.X = s.XLower + 1
@@ -48,11 +48,11 @@ func (s *Solution) init(obj ObjWrapper) {
 
 	}
 	if math.IsNaN(s.ObjLower) {
-		s.ObjLower = obj.Val(s.XLower)
+		s.ObjLower = obj.F(s.XLower)
 	}
 }
 
-func (s *Solution) initDeriv(obj ObjDerivWrapper) {
+func (s *Solution) initFdF(obj fdfWrapper) {
 	if math.IsNaN(s.X) || s.X <= s.XLower || s.X >= s.XUpper {
 		if math.IsInf(s.XUpper, 1) {
 			s.X = s.XLower + 1
@@ -61,18 +61,18 @@ func (s *Solution) initDeriv(obj ObjDerivWrapper) {
 		}
 
 	}
-	s.Obj, s.Deriv = obj.ValDeriv(s.X)
+	s.Obj, s.Deriv = obj.FdF(s.X)
 	if math.IsNaN(s.DerivLower) {
-		s.ObjLower, s.DerivLower = obj.ValDeriv(s.XLower)
+		s.ObjLower, s.DerivLower = obj.FdF(s.XLower)
 	}
 
 	if math.IsNaN(s.ObjLower) {
-		s.ObjLower = obj.Val(s.XLower)
+		s.ObjLower = obj.F(s.XLower)
 	}
 }
 
 //sets X, Obj, Deriv, Deriv2, in that order
-func (s *Solution) SetX(xs ...float64) {
+func (s *Solution) Set(xs ...float64) {
 	s.X = nan
 	s.Obj = nan
 	s.Deriv = nan
@@ -93,7 +93,7 @@ func (s *Solution) SetX(xs ...float64) {
 }
 
 //sets XLower, ObjLower, DerivLower, in that order
-func (s *Solution) SetXLower(lbs ...float64) {
+func (s *Solution) SetLower(lbs ...float64) {
 	s.XLower = 0
 	s.ObjLower = nan
 	s.DerivLower = nan
@@ -113,7 +113,7 @@ func (s *Solution) SetXLower(lbs ...float64) {
 }
 
 //sets XUpper, ObjUpper, DerivUpper, in that order
-func (s *Solution) SetXUpper(ubs ...float64) {
+func (s *Solution) SetUpper(ubs ...float64) {
 	s.XUpper = math.Inf(1)
 	s.ObjUpper = nan
 	s.DerivUpper = nan

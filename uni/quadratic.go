@@ -13,16 +13,16 @@ type Quadratic struct {
 func NewQuadratic() *Quadratic {
 	return &Quadratic{
 		Termination: Termination{
-			IterMax: 100,
+			IterMax: 1000,
 			TimeMax: time.Minute,
 		},
 	}
 }
 
-func (sol *Quadratic) Solve(o Function, in *Solution, upd ...Updater) *Result {
+func (sol *Quadratic) OptimizeF(o F, in *Solution, upd ...Updater) *Result {
 	r := NewResult(in)
-	obj := ObjWrapper{r: r, o: o}
-	r.init(obj)
+	obj := fWrapper{r: r, f: o}
+	r.initF(obj)
 
 	upd = append(upd, sol.Termination)
 
@@ -33,15 +33,16 @@ func (sol *Quadratic) Solve(o Function, in *Solution, upd ...Updater) *Result {
 
 	eps := 0.0
 
+	//search for three point bracket
 	if math.IsInf(r.XUpper, 1) {
 		xNew = r.X
 		fNew = r.Obj
 		if math.IsNaN(xNew) {
 			xNew = 1
-			fNew = obj.Val(xNew)
+			fNew = obj.F(xNew)
 		}
 		if math.IsNaN(fNew) {
-			fNew = obj.Val(xNew)
+			fNew = obj.F(xNew)
 		}
 
 		step := r.X - r.XLower
@@ -50,7 +51,7 @@ func (sol *Quadratic) Solve(o Function, in *Solution, upd ...Updater) *Result {
 			r.X = xNew
 
 			r.XUpper = r.X + step
-			r.ObjUpper = obj.Val(r.XUpper)
+			r.ObjUpper = obj.F(r.XUpper)
 			for r.ObjUpper <= r.Obj {
 				r.XLower = r.X
 				r.ObjLower = r.Obj
@@ -60,7 +61,7 @@ func (sol *Quadratic) Solve(o Function, in *Solution, upd ...Updater) *Result {
 
 				step *= 2
 				r.XUpper = r.X + step
-				r.ObjUpper = obj.Val(r.XUpper)
+				r.ObjUpper = obj.F(r.XUpper)
 
 				if doUpdates(r, initialTime, upd) != 0 {
 					return r
@@ -73,14 +74,14 @@ func (sol *Quadratic) Solve(o Function, in *Solution, upd ...Updater) *Result {
 			step *= 0.5
 
 			r.X = r.XLower + step
-			r.Obj = obj.Val(r.X)
+			r.Obj = obj.F(r.X)
 			for r.Obj >= r.ObjLower {
 				r.XUpper = r.X
 				r.ObjUpper = r.Obj
 
 				step *= 0.5
 				r.X = r.XLower + step
-				r.Obj = obj.Val(r.X)
+				r.Obj = obj.F(r.X)
 
 				if doUpdates(r, initialTime, upd) != 0 {
 					return r
@@ -92,13 +93,13 @@ func (sol *Quadratic) Solve(o Function, in *Solution, upd ...Updater) *Result {
 		r.XUpper = r.XUpper
 		r.ObjUpper = r.ObjUpper
 		if math.IsNaN(r.ObjUpper) {
-			r.ObjUpper = obj.Val(r.XUpper)
+			r.ObjUpper = obj.F(r.XUpper)
 		}
 		if r.ObjUpper < r.ObjLower {
 			for r.ObjUpper < r.ObjLower {
 				eps = 0.01 * (r.XUpper - r.XLower)
 				r.X = r.XUpper - eps
-				r.Obj = obj.Val(r.X)
+				r.Obj = obj.F(r.X)
 				if r.Obj >= r.ObjUpper {
 					r.XLower = r.X
 					r.ObjLower = r.Obj
@@ -112,10 +113,10 @@ func (sol *Quadratic) Solve(o Function, in *Solution, upd ...Updater) *Result {
 		} else {
 
 			r.X = 0.5 * r.XUpper
-			r.Obj = obj.Val(r.X)
+			r.Obj = obj.F(r.X)
 			for r.Obj >= r.ObjLower {
 				r.X *= 0.5
-				r.Obj = obj.Val(r.X)
+				r.Obj = obj.F(r.X)
 
 				if doUpdates(r, initialTime, upd) != 0 {
 					return r
@@ -145,7 +146,7 @@ func (sol *Quadratic) Solve(o Function, in *Solution, upd ...Updater) *Result {
 			}
 		}
 
-		fNew = obj.Val(xNew)
+		fNew = obj.F(xNew)
 
 		if !(xNew > r.XLower && xNew < r.XUpper) || (xNew < r.X && fNew > r.ObjLower) ||
 			(xNew > r.X && fNew > r.ObjUpper) {
@@ -154,7 +155,7 @@ func (sol *Quadratic) Solve(o Function, in *Solution, upd ...Updater) *Result {
 			} else {
 				xNew = (r.X + r.XLower) / 2
 			}
-			fNew = obj.Val(xNew)
+			fNew = obj.F(xNew)
 		}
 
 		if xNew > r.X {

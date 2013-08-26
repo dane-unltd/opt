@@ -7,21 +7,23 @@ import (
 
 type Cubic struct {
 	Termination
+	Armijo float64
 }
 
 func NewCubic() *Cubic {
 	return &Cubic{
 		Termination: Termination{
-			IterMax: 100,
+			IterMax: 1000,
 			TimeMax: time.Minute,
 		},
+		Armijo: 1e-4,
 	}
 }
 
-func (sol *Cubic) Solve(o Deriv, in *Solution, upd ...Updater) *Result {
+func (sol *Cubic) OptimizeFdF(o FdF, in *Solution, upd ...Updater) *Result {
 	r := NewResult(in)
-	obj := ObjDerivWrapper{r: r, o: o}
-	r.initDeriv(obj)
+	obj := fdfWrapper{r: r, fdf: o}
+	r.initFdF(obj)
 
 	initialTime := time.Now()
 
@@ -32,25 +34,32 @@ func (sol *Cubic) Solve(o Deriv, in *Solution, upd ...Updater) *Result {
 		return r
 	}
 
-	//search for upper bound
+	x0 := r.XLower
+	f0 := r.ObjLower
+	g0 := r.DerivLower
+
+	if doUpdates(r, initialTime, upd) != 0 {
+		return r
+	}
+
+	//search for 2 point bracket if upper bound is inf
 	for math.IsInf(r.XUpper, 1) {
 		if r.Deriv > 0 {
 			r.XUpper = r.X
 			r.ObjUpper = r.Obj
 			r.DerivUpper = r.Deriv
 		} else {
-			if r.Obj > r.ObjLower {
+			if r.Obj > r.ObjLower || r.Obj-f0 > sol.Armijo*(r.X-x0)*g0 {
 				r.XUpper = r.X
 				r.ObjUpper = r.Obj
 				r.DerivUpper = r.Deriv
 			} else {
-				lb := r.XLower
 				r.XLower = r.X
 				r.ObjLower = r.Obj
 				r.DerivLower = r.Deriv
 
-				r.X += 2 * (r.X - lb)
-				r.Obj, r.Deriv = obj.ValDeriv(r.X)
+				r.X += (r.X - x0)
+				r.Obj, r.Deriv = obj.FdF(r.X)
 				if doUpdates(r, initialTime, upd) != 0 {
 					return r
 				}
@@ -78,14 +87,14 @@ func (sol *Cubic) Solve(o Deriv, in *Solution, upd ...Updater) *Result {
 			r.X = r.XUpper - eps
 		}
 
-		r.Obj, r.Deriv = obj.ValDeriv(r.X)
+		r.Obj, r.Deriv = obj.FdF(r.X)
 
 		if r.Deriv > 0 {
 			r.XUpper = r.X
 			r.ObjUpper = r.Obj
 			r.DerivUpper = r.Deriv
 		} else {
-			if r.Obj > r.ObjLower {
+			if r.Obj > r.ObjLower || r.Obj-f0 > sol.Armijo*(r.X-x0)*g0 {
 				r.XUpper = r.X
 				r.ObjUpper = r.Obj
 				r.DerivUpper = r.Deriv

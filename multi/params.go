@@ -4,25 +4,20 @@ import "time"
 
 //Solver independent optimization parameters
 type Params struct {
-	FunTolAbs float64
-	FunTolRel float64
-	XTolAbs   float64
-	XTolRel   float64
+	Termination
 
-	IterMax    int
-	TimeMax    time.Duration
+	Accuracy float64
+
 	FunEvalMax int
 }
 
 func NewParams() *Params {
 	return &Params{
-		FunTolAbs: 1e-15,
-		FunTolRel: 1e-15,
-		XTolAbs:   1e-6,
-		XTolRel:   1e-2,
-
-		IterMax:    1000,
-		TimeMax:    time.Minute,
-		FunEvalMax: 1000,
+		Termination: Termination{
+			IterMax: 1000,
+			TimeMax: time.Minute,
+		},
+		Accuracy:   1e-6,
+		FunEvalMax: 10000,
 	}
 }

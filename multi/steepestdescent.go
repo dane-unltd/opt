@@ -3,51 +3,69 @@ package multi
 import (
 	"github.com/dane-unltd/linalg/mat"
 	"github.com/dane-unltd/opt/uni"
+	"time"
 )
 
 type SteepestDescent struct {
-	LineSearch uni.DerivSolver
+	Termination
+	LineSearch uni.FdFOptimizer
 }
 
 func NewSteepestDescent() *SteepestDescent {
 	s := &SteepestDescent{
-		LineSearch: uni.DerivWrapper{uni.NewArmijo()},
+		Termination: Termination{
+			IterMax: 1000,
+			TimeMax: time.Minute,
+		},
+		LineSearch: uni.NewBacktracking(),
 	}
 	return s
 }
 
-func (sol SteepestDescent) Solve(o Grad, in *Solution, p *Params, upd ...Updater) *Result {
+func (sol SteepestDescent) OptimizeFdF(o FdF, in *Solution, upd ...Updater) *Result {
 	r := NewResult(in)
-	obj := ObjGradWrapper{r: r, o: o}
-	r.initGrad(obj)
-	upd = append(upd, newBasicConv(r.Solution, p))
+	obj := fdfWrapper{r: r, fdf: o}
+	r.initFdF(obj)
+
+	upd = append(upd, sol.Termination)
+
+	initialTime := time.Now()
 
 	n := len(r.X)
 	s := 1.0 //initial step size
-	gLin := -r.GradX.Nrm2Sq()
+	gLin := -r.Grad.Nrm2Sq()
 
 	d := mat.NewVec(n)
-	d.Copy(r.GradX)
+	d.Copy(r.Grad)
 	d.Scal(-1)
 
-	lineFunc := NewLineFuncDeriv(obj, r.X, d)
+	lineFunc := NewLineFdF(obj, r.X, d)
 	lsInit := uni.NewSolution()
-	lsParams := uni.NewParams()
 
-	for doUpdates(r, upd) == 0 {
-		lsInit.SetX(s)
-		lsInit.SetLB(0, r.ObjX, gLin)
-		lsRes := sol.LineSearch.Solve(lineFunc, lsInit, lsParams)
+	for doUpdates(r, initialTime, upd) == 0 {
+		s = s * 2
+
+		wolfe := uni.Wolfe{
+			Armijo:    0.2,
+			Curvature: 0.9,
+			X0:        0,
+			F0:        r.Obj,
+			Deriv0:    gLin,
+		}
+
+		lsInit.Set(s)
+		lsInit.SetLower(0, r.Obj, gLin)
+		lsRes := sol.LineSearch.OptimizeFdF(lineFunc, lsInit, wolfe)
 		if lsRes.Status < 0 {
 			r.Status = Status(lsRes.Status)
 			break
 		}
-		s, r.ObjX = lsRes.X, lsRes.ObjX
+		s, r.Obj = lsRes.X, lsRes.Obj
 
 		r.X.Axpy(s, d)
 
-		obj.ValGrad(r.X, r.GradX)
-		d.Copy(r.GradX)
+		obj.DF(r.X, r.Grad)
+		d.Copy(r.Grad)
 		d.Scal(-1)
 
 		gLin = -d.Nrm2Sq()

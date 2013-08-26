@@ -13,14 +13,13 @@ type Stats struct {
 }
 
 type Result struct {
-	*Solution
+	Solution
 	Stats
 	Status Status
 }
 
 func NewResult(in *Solution) *Result {
 	r := &Result{}
-	r.Solution = &Solution{}
-	*r.Solution = *in
+	r.Solution = *in
 	return r
 }

@@ -4,23 +4,37 @@ import (
 	"github.com/dane-unltd/linalg/mat"
 	"github.com/dane-unltd/opt/uni"
 	"math"
+	"time"
 )
 
 type Rosenbrock struct {
-	LineSearch uni.Solver
+	Termination
+	LineSearch uni.FOptimizer
+	Accuracy   float64
 }
 
 func NewRosenbrock() *Rosenbrock {
 	return &Rosenbrock{
+		Termination: Termination{
+			IterMax: 1000,
+			TimeMax: time.Minute,
+		},
 		LineSearch: uni.NewQuadratic(),
+		Accuracy:   1e-4,
 	}
 }
+func (sol *Rosenbrock) OptimizeFdF(o FdF, in *Solution, upd ...Updater) *Result {
+	return sol.OptimizeF(o, in, upd...)
+}
 
-func (sol *Rosenbrock) Solve(o Function, in *Solution, p *Params, upd ...Updater) *Result {
+func (sol *Rosenbrock) OptimizeF(o F, in *Solution, upd ...Updater) *Result {
 	r := NewResult(in)
-	obj := ObjWrapper{r: r, o: o}
-	r.init(obj)
-	upd = append(upd, newBasicConv(r.Solution, p))
+	obj := fWrapper{r: r, f: o}
+	r.initF(obj)
+
+	upd = append(upd, sol.Termination)
+
+	initialTime := time.Now()
 
 	eps := 1.0
 	n := len(r.X)
@@ -33,54 +47,50 @@ func (sol *Rosenbrock) Solve(o Function, in *Solution, p *Params, upd ...Updater
 
 	lambda := make([]float64, n)
 
-	lf := make([]*LineFunc, n)
+	lf := make([]*LineF, n)
 	for i := range lf {
-		lf[i] = NewLineFunc(obj, r.X, d[i])
+		lf[i] = NewLineF(obj, r.X, d[i])
 	}
 
 	lsInit := uni.NewSolution()
-	lsParams := uni.NewParams()
-	lsParams.XTolAbs = p.XTolAbs
-	lsParams.XTolRel = p.XTolRel
-	lsParams.FunTolAbs = 0
-	lsParams.FunTolRel = 0
 
-	for doUpdates(r, upd) == 0 {
+	for doUpdates(r, initialTime, upd) == 0 {
 
 		//Search in all directions
 		for i := range d {
 			lf[i].Dir = 1
 			valNeg := 0.0
-			valPos := lf[i].Val(eps)
-			if valPos >= r.ObjX {
+			valPos := lf[i].F(eps)
+			if valPos >= r.Obj {
 				lf[i].Dir = -1
-				valNeg = lf[i].Val(eps)
-				if valNeg >= r.ObjX {
+				valNeg = lf[i].F(eps)
+				if valNeg >= r.Obj {
 					eps *= 0.5
 					lf[i].Dir = 1
-					lsInit.SetLB(-eps)
-					lsInit.SetUB(eps)
-					lsInit.SetX(0)
+					lsInit.SetLower(-eps)
+					lsInit.SetUpper(eps)
+					lsInit.Set(0)
 				} else {
-					lsInit.SetUB()
-					lsInit.SetLB()
-					lsInit.SetX(eps)
+					lsInit.SetUpper()
+					lsInit.SetLower()
+					lsInit.Set(eps)
 				}
 			} else {
-				lsInit.SetUB()
-				lsInit.SetLB()
-				lsInit.SetX(eps)
+				lsInit.SetUpper()
+				lsInit.SetLower()
+				lsInit.Set(eps)
 			}
-			lsRes := sol.LineSearch.Solve(lf[i], lsInit, lsParams)
+			lsRes := sol.LineSearch.OptimizeF(lf[i], lsInit,
+				uni.Accuracy(sol.Accuracy))
 
 			lambda[i] = lf[i].Dir * lsRes.X
 			r.X.Axpy(lambda[i], d[i])
-			r.ObjX = lsRes.ObjX
+			r.Obj = lsRes.Obj
 		}
 
 		//Find new directions
 		for i := range d {
-			if math.Abs(lambda[i]) > p.XTolAbs {
+			if math.Abs(lambda[i]) > sol.Accuracy {
 				d[i].Scal(lambda[i])
 				for j := i + 1; j < n; j++ {
 					d[i].Axpy(lambda[j], d[j])

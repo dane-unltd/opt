@@ -22,14 +22,14 @@ func (h *History) Update(m *Result) Status {
 		h.X = append(h.X, xt)
 	}
 	if h.Grad != nil {
-		if m.GradX != nil {
-			gt := make(mat.Vec, len(m.GradX))
-			gt.Copy(m.GradX)
+		if m.Grad != nil {
+			gt := make(mat.Vec, len(m.Grad))
+			gt.Copy(m.Grad)
 			h.Grad = append(h.Grad, gt)
 		}
 	}
 	if h.Obj != nil {
-		h.Obj = append(h.Obj, m.ObjX)
+		h.Obj = append(h.Obj, m.Obj)
 	}
 	return NotTerminated
 }

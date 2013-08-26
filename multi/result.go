@@ -13,19 +13,18 @@ type Stats struct {
 }
 
 type Result struct {
-	*Solution
+	Solution
 	Stats
 	Status Status
 }
 
 func NewResult(in *Solution) *Result {
 	r := &Result{}
-	r.Solution = &Solution{}
 	r.Solution.SetX(in.X, true)
-	r.ObjX = in.ObjX
-	if in.GradX != nil {
-		r.GradX = make(mat.Vec, len(in.GradX))
-		r.GradX.Copy(in.GradX)
+	r.Obj = in.Obj
+	if in.Grad != nil {
+		r.Grad = make(mat.Vec, len(in.Grad))
+		r.Grad.Copy(in.Grad)
 	}
 	return r
 }

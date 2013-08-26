@@ -5,20 +5,23 @@ import (
 	"testing"
 )
 
+// http://www.wolframalpha.com/input/?i=0.3+*+exp%28+-+3+%28x-1%29%29+%2B+exp%28x-1%29
 type SumExpStruct struct{}
 
-func (s SumExpStruct) Val(x float64) (f float64) {
-
-	// http://www.wolframalpha.com/input/?i=0.3+*+exp%28+-+3+%28x-1%29%29+%2B+exp%28x-1%29
+func (s SumExpStruct) F(x float64) (f float64) {
 	c1 := 0.3
 	c2 := 3.0
 	f = c1*math.Exp(-c2*(x-1)) + math.Exp((x - 1))
 	return f
 }
 
-func (s SumExpStruct) ValDeriv(x float64) (f, d float64) {
+func (s SumExpStruct) DF(x float64) float64 {
+	c1 := 0.3
+	c2 := 3.0
+	return -c1*c2*math.Exp(-c2*(x-1)) + math.Exp((x - 1))
+}
 
-	// http://www.wolframalpha.com/input/?i=0.3+*+exp%28+-+3+%28x-1%29%29+%2B+exp%28x-1%29
+func (s SumExpStruct) FdF(x float64) (f, d float64) {
 	c1 := 0.3
 	c2 := 3.0
 	f = c1*math.Exp(-c2*(x-1)) + math.Exp((x - 1))
@@ -42,10 +45,10 @@ func TestUni(t *testing.T) {
 	fun := SumExpStruct{}
 
 	in := NewSolution()
-	in.SetX(0.5)
-	in.ObjLower, in.DerivLower = fun.ValDeriv(in.XLower)
+	in.Set(0.5)
+	in.ObjLower, in.DerivLower = fun.FdF(in.XLower)
 
-	r := NewQuadratic().Solve(fun, in, Accuracy(1e-3))
+	r := NewQuadratic().OptimizeF(fun, in, Accuracy(1e-3))
 
 	t.Log(r.XLower, r.X, r.XUpper, r.Status)
 	t.Log(r.Obj - fun.OptVal())
@@ -55,14 +58,14 @@ func TestUni(t *testing.T) {
 		t.Fail()
 	}
 
-	r = NewArmijo().Solve(fun, in)
+	r = NewBacktracking().OptimizeF(fun, in)
 	t.Log(r.FunEvals, r.Status)
 
 	if r.Obj >= r.ObjLower {
 		t.Fail()
 	}
 
-	r = NewCubic().Solve(fun, in, Accuracy(1e-3))
+	r = NewCubic().OptimizeFdF(fun, in, Accuracy(1e-3))
 
 	t.Log(r.XLower, r.X, r.XUpper, r.Status)
 	t.Log(r.Obj - fun.OptVal())

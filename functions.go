@@ -30,7 +30,7 @@ func NewQuadratic(A *mat.Dense, b mat.Vec, c float64) *Quadratic {
 	}
 }
 
-func (Q *Quadratic) Val(x mat.Vec) float64 {
+func (Q *Quadratic) F(x mat.Vec) float64 {
 	val := 0.0
 	Q.temp.Transform(Q.A, x)
 	val += mat.Dot(x, Q.temp)
@@ -39,7 +39,17 @@ func (Q *Quadratic) Val(x mat.Vec) float64 {
 	return val
 }
 
-func (Q *Quadratic) ValGrad(x, g mat.Vec) float64 {
+func (Q *Quadratic) DF(x, g mat.Vec) {
+	At := Q.A.TrView()
+
+	Q.temp.Transform(Q.A, x)
+
+	g.Transform(At, x)
+	g.Add(g, Q.temp)
+	g.Add(g, Q.B)
+}
+
+func (Q *Quadratic) FdF(x, g mat.Vec) float64 {
 	At := Q.A.TrView()
 
 	Q.temp.Transform(Q.A, x)
@@ -57,7 +67,7 @@ func (Q *Quadratic) ValGrad(x, g mat.Vec) float64 {
 
 type Rosenbrock struct{}
 
-func (R Rosenbrock) Val(x mat.Vec) float64 {
+func (R Rosenbrock) F(x mat.Vec) float64 {
 	sum := 0.0
 	for i := 0; i < len(x)-1; i++ {
 		sum += math.Pow(1-x[i], 2) +
@@ -66,7 +76,18 @@ func (R Rosenbrock) Val(x mat.Vec) float64 {
 	return sum
 }
 
-func (R Rosenbrock) ValGrad(x, g mat.Vec) float64 {
+func (R Rosenbrock) DF(x, g mat.Vec) {
+	g[len(x)-1] = 0
+	for i := 0; i < len(x)-1; i++ {
+		g[i] = -1 * 2 * (1 - x[i])
+		g[i] += 2 * 100 * (x[i+1] - math.Pow(x[i], 2)) * (-2 * x[i])
+	}
+	for i := 1; i < len(x); i++ {
+		g[i] += 2 * 100 * (x[i] - math.Pow(x[i-1], 2))
+	}
+}
+
+func (R Rosenbrock) FdF(x, g mat.Vec) float64 {
 	g[len(x)-1] = 0
 	for i := 0; i < len(x)-1; i++ {
 		g[i] = -1 * 2 * (1 - x[i])

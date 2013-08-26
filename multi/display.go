@@ -14,8 +14,8 @@ func NewDisplay(p int) *Display {
 
 func (dsp *Display) Update(r *Result) Status {
 	gradNorm := nan
-	if r.GradX != nil {
-		gradNorm = r.GradX.Nrm2()
+	if r.Grad != nil {
+		gradNorm = r.Grad.Nrm2()
 	}
 	if r.Iter == 0 {
 		fmt.Println("------------------------------------------------------")
@@ -27,7 +27,7 @@ func (dsp *Display) Update(r *Result) Status {
 	}
 	if r.Iter%dsp.Period == 0 {
 		fmt.Printf("%6d   %6d      %3.2f    %.2E    %.2E\n", r.Iter,
-			r.FunEvals, r.Time.Seconds(), r.ObjX, gradNorm)
+			r.FunEvals, r.Time.Seconds(), r.Obj, gradNorm)
 	}
 	return 0
 }

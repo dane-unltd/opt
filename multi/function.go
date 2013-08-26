@@ -4,36 +4,38 @@ import (
 	"github.com/dane-unltd/linalg/mat"
 )
 
-type Function interface {
-	Val(x mat.Vec) float64
+type F interface {
+	F(x mat.Vec) float64
 }
 
-type Grad interface {
-	Function
-	ValGrad(x, g mat.Vec) float64
+type FdF interface {
+	F
+	DF(x, g mat.Vec)
+	FdF(x, g mat.Vec) float64
 }
 
-type Hessian interface {
-	Grad
-	ValGradHess(x, g, h mat.Vec) float64
+type FdFddF interface {
+	FdF
+	DDF(x, h mat.Vec)
+	FdFddF(x, g, h mat.Vec) float64
 }
 
 type Projection interface {
 	Project(x mat.Vec)
 }
 
-type LineFunc struct {
-	f           Function
+type LineF struct {
+	f           F
 	x, d, xTemp mat.Vec
 	Dir         float64
 }
 
-func NewLineFunc(f Function, x, d mat.Vec) *LineFunc {
+func NewLineF(f F, x, d mat.Vec) *LineF {
 	n := len(x)
 	if len(d) != n {
 		panic("dimension mismatch")
 	}
-	return &LineFunc{
+	return &LineF{
 		f:     f,
 		x:     x,
 		d:     d,
@@ -42,13 +44,13 @@ func NewLineFunc(f Function, x, d mat.Vec) *LineFunc {
 	}
 }
 
-func (lf *LineFunc) Val(alpha float64) float64 {
+func (lf *LineF) F(alpha float64) float64 {
 	lf.xTemp.Copy(lf.x)
 	lf.xTemp.Axpy(lf.Dir*alpha, lf.d)
-	return lf.f.Val(lf.xTemp)
+	return lf.f.F(lf.xTemp)
 }
 
-func (lf *LineFunc) SwitchDir() {
+func (lf *LineF) SwitchDir() {
 	if lf.Dir > 0 {
 		lf.Dir = -1
 	} else {
@@ -56,18 +58,18 @@ func (lf *LineFunc) SwitchDir() {
 	}
 }
 
-type LineFuncDeriv struct {
-	f              Grad
+type LineFdF struct {
+	fdf            FdF
 	x, d, g, xTemp mat.Vec
 }
 
-func NewLineFuncDeriv(f Grad, x, d mat.Vec) *LineFuncDeriv {
+func NewLineFdF(fdf FdF, x, d mat.Vec) *LineFdF {
 	n := len(x)
 	if len(d) != n {
 		panic("dimension mismatch")
 	}
-	return &LineFuncDeriv{
-		f:     f,
+	return &LineFdF{
+		fdf:   fdf,
 		x:     x,
 		d:     d,
 		g:     mat.NewVec(n),
@@ -75,32 +77,40 @@ func NewLineFuncDeriv(f Grad, x, d mat.Vec) *LineFuncDeriv {
 	}
 }
 
-func (lf *LineFuncDeriv) Val(x float64) float64 {
+func (lf *LineFdF) F(x float64) float64 {
 	lf.xTemp.Copy(lf.x)
 	lf.xTemp.Axpy(x, lf.d)
-	return lf.f.Val(lf.xTemp)
+	return lf.fdf.F(lf.xTemp)
 }
 
-func (lf *LineFuncDeriv) ValDeriv(x float64) (float64, float64) {
+func (lf *LineFdF) DF(x float64) float64 {
 	lf.xTemp.Copy(lf.x)
 	lf.xTemp.Axpy(x, lf.d)
-	val := lf.f.ValGrad(lf.xTemp, lf.g)
+	lf.fdf.DF(lf.xTemp, lf.g)
+
+	return mat.Dot(lf.d, lf.g)
+}
+
+func (lf *LineFdF) FdF(x float64) (float64, float64) {
+	lf.xTemp.Copy(lf.x)
+	lf.xTemp.Axpy(x, lf.d)
+	val := lf.fdf.FdF(lf.xTemp, lf.g)
 
 	return val, mat.Dot(lf.d, lf.g)
 }
 
-type LineFuncProj struct {
-	f           Function
+type LineFProj struct {
+	f           F
 	p           Projection
 	x, d, xTemp mat.Vec
 }
 
-func NewLineFuncProj(f Function, p Projection, x, d mat.Vec) *LineFuncProj {
+func NewLineFProj(f F, p Projection, x, d mat.Vec) *LineFProj {
 	n := len(x)
 	if len(d) != n {
 		panic("dimension mismatch")
 	}
-	return &LineFuncProj{
+	return &LineFProj{
 		f:     f,
 		p:     p,
 		x:     x,
@@ -109,9 +119,9 @@ func NewLineFuncProj(f Function, p Projection, x, d mat.Vec) *LineFuncProj {
 	}
 }
 
-func (lf *LineFuncProj) Val(x float64) float64 {
+func (lf *LineFProj) F(x float64) float64 {
 	lf.xTemp.Copy(lf.x)
 	lf.xTemp.Axpy(x, lf.d)
 	lf.p.Project(lf.xTemp)
-	return lf.f.Val(lf.xTemp)
+	return lf.f.F(lf.xTemp)
 }
