@@ -4,19 +4,16 @@ import (
 	"time"
 )
 
-type IterMax int
-
-func (it IterMax) Update(r *Result) Status {
-	if r.Iter >= int(it) {
-		return IterLimit
-	}
-	return NotTerminated
+type Termination struct {
+	IterMax int
+	TimeMax time.Duration
 }
 
-type TimeMax time.Duration
-
-func (t TimeMax) Update(r *Result) Status {
-	if r.Time >= time.Duration(t) {
+func (t Termination) Update(r *Result) Status {
+	if r.Iter >= t.IterMax {
+		return IterLimit
+	}
+	if r.Time >= t.TimeMax {
 		return TimeLimit
 	}
 	return NotTerminated

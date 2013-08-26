@@ -6,18 +6,27 @@ import (
 )
 
 //Inexact line search using Armijo's rule.
-type Armijo struct{}
-
-func NewArmijo() *Armijo {
-	return &Armijo{}
+type Armijo struct {
+	Armijo float64
+	Termination
 }
 
-func (s *Armijo) Solve(o Function, in *Solution, p *Params, upd ...Updater) *Result {
+func NewArmijo() *Armijo {
+	return &Armijo{
+		Armijo: 0.2,
+		Termination: Termination{
+			IterMax: 100,
+			TimeMax: time.Minute,
+		},
+	}
+}
+
+func (s *Armijo) Solve(o Function, in *Solution, upd ...Updater) *Result {
 	r := NewResult(in)
 	obj := ObjWrapper{r: r, o: o}
 	r.init(obj)
 
-	addConvChecks(&upd, p, r)
+	upd = append(upd, s.Termination)
 
 	initialTime := time.Now()
 
@@ -38,7 +47,7 @@ func (s *Armijo) Solve(o Function, in *Solution, p *Params, upd ...Updater) *Res
 	r.X = r.XLower + step
 	r.Obj = obj.Val(r.X)
 
-	if r.Obj-r.ObjLower > p.Armijo*r.DerivLower*step {
+	if r.Obj-r.ObjLower > s.Armijo*r.DerivLower*step {
 		fPrev := r.Obj
 		step *= beta
 		for {
@@ -49,7 +58,7 @@ func (s *Armijo) Solve(o Function, in *Solution, p *Params, upd ...Updater) *Res
 				break
 			}
 
-			if r.Obj-r.ObjLower <= p.Armijo*r.DerivLower*step {
+			if r.Obj-r.ObjLower <= s.Armijo*r.DerivLower*step {
 				if fPrev < r.Obj {
 					step /= beta
 					r.X = r.XLower + step
@@ -76,7 +85,7 @@ func (s *Armijo) Solve(o Function, in *Solution, p *Params, upd ...Updater) *Res
 				break
 			}
 
-			if r.Obj-r.ObjLower > p.Armijo*r.DerivLower*step {
+			if r.Obj-r.ObjLower > s.Armijo*r.DerivLower*step {
 				if fPrev < r.Obj {
 					step *= beta
 					r.X = r.XLower + step

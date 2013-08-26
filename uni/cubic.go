@@ -5,26 +5,27 @@ import (
 	"time"
 )
 
-type Cubic struct{}
-
-func NewCubic() *Cubic {
-	return &Cubic{}
+type Cubic struct {
+	Termination
 }
 
-func (sol *Cubic) Solve(o Deriv, in *Solution, p *Params, upd ...Updater) *Result {
+func NewCubic() *Cubic {
+	return &Cubic{
+		Termination: Termination{
+			IterMax: 100,
+			TimeMax: time.Minute,
+		},
+	}
+}
+
+func (sol *Cubic) Solve(o Deriv, in *Solution, upd ...Updater) *Result {
 	r := NewResult(in)
 	obj := ObjDerivWrapper{r: r, o: o}
 	r.initDeriv(obj)
 
-	addConvChecks(&upd, p, r)
-
 	initialTime := time.Now()
 
-	x0 := r.XLower
-	f0 := r.ObjLower
-	d0 := r.DerivLower
-
-	eps := 0.4 * p.Accuracy
+	upd = append(upd, sol.Termination)
 
 	if r.DerivLower > 0 {
 		r.Status = Fail
@@ -38,7 +39,7 @@ func (sol *Cubic) Solve(o Deriv, in *Solution, p *Params, upd ...Updater) *Resul
 			r.ObjUpper = r.Obj
 			r.DerivUpper = r.Deriv
 		} else {
-			if r.Obj-f0 > p.Armijo*d0*(r.X-x0) {
+			if r.Obj > r.ObjLower {
 				r.XUpper = r.X
 				r.ObjUpper = r.Obj
 				r.DerivUpper = r.Deriv
@@ -58,6 +59,8 @@ func (sol *Cubic) Solve(o Deriv, in *Solution, p *Params, upd ...Updater) *Resul
 	}
 
 	for {
+		eps := 0.01 * (r.XUpper - r.XLower)
+
 		//cubic interpolation between upper bound and lower bound
 		eta := 3*(r.ObjLower-r.ObjUpper)/(r.XUpper-r.XLower) + r.DerivLower + r.DerivUpper
 		nu := math.Sqrt(math.Pow(eta, 2) - r.DerivLower*r.DerivUpper)
@@ -82,7 +85,7 @@ func (sol *Cubic) Solve(o Deriv, in *Solution, p *Params, upd ...Updater) *Resul
 			r.ObjUpper = r.Obj
 			r.DerivUpper = r.Deriv
 		} else {
-			if r.Obj-f0 > p.Armijo*d0*(r.X-x0) {
+			if r.Obj > r.ObjLower {
 				r.XUpper = r.X
 				r.ObjUpper = r.Obj
 				r.DerivUpper = r.Deriv

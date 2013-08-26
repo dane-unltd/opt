@@ -43,34 +43,31 @@ func TestUni(t *testing.T) {
 
 	in := NewSolution()
 	in.SetX(0.5)
-	in.ObjLower, in.DerivLower = fun.ValDeriv(in.LB)
+	in.ObjLower, in.DerivLower = fun.ValDeriv(in.XLower)
 
-	t.Log(fun, in, p)
-	r := NewQuadratic().Solve(fun, in, p, IterMax(4))
+	r := NewQuadratic().Solve(fun, in, Accuracy(1e-3))
 
-	t.Log(r.LB, r.X, r.UB, r.Status)
-	t.Log(r.ObjX - fun.OptVal())
+	t.Log(r.XLower, r.X, r.XUpper, r.Status)
+	t.Log(r.Obj - fun.OptVal())
 	t.Log(r.FunEvals, r.Status)
 
 	if math.Abs(r.X-fun.OptLoc()) > 0.01 {
 		t.Fail()
 	}
 
-	r = NewArmijo().Solve(fun, in, p, IterMax(4))
+	r = NewArmijo().Solve(fun, in)
 	t.Log(r.FunEvals, r.Status)
 
-	if r.ObjX >= r.ObjLB {
+	if r.Obj >= r.ObjLower {
 		t.Fail()
 	}
 
-	p.IterMax = 10
-	p.Inexact = false
+	r = NewCubic().Solve(fun, in, Accuracy(1e-3))
 
-	r = NewCubic().Solve(fun, in, p, IterMax(4))
-
-	t.Log(r.LB, r.X, r.UB, r.Status)
-	t.Log(r.ObjX - fun.OptVal())
+	t.Log(r.XLower, r.X, r.XUpper, r.Status)
+	t.Log(r.Obj - fun.OptVal())
 	t.Log(r.FunEvals, r.Status)
+
 	if math.Abs(r.X-fun.OptLoc()) > 0.01 {
 		t.Fail()
 	}
