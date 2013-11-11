@@ -1,8 +1,8 @@
 package multi
 
 import (
-	"github.com/dane-unltd/linalg/mat"
 	"github.com/dane-unltd/opt/uni"
+	"github.com/gonum/matrix/mat64"
 	"time"
 )
 
@@ -35,8 +35,8 @@ func (sol SteepestDescent) OptimizeFdF(o FdF, in *Solution, upd ...Updater) *Res
 	s := 1.0 //initial step size
 	gLin := -r.Grad.Nrm2Sq()
 
-	d := mat.NewVec(n)
-	d.Copy(r.Grad)
+	d := make(mat64.Vec, n)
+	copy(d, r.Grad)
 	d.Scal(-1)
 
 	lineFunc := NewLineFdF(obj, r.X, d)
