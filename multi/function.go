@@ -1,53 +1,53 @@
 package multi
 
 import (
-	"github.com/dane-unltd/linalg/mat"
+	"github.com/gonum/blas/blasw"
 )
 
 type F interface {
-	F(x mat.Vec) float64
+	F(x []float64) float64
 }
 
 type FdF interface {
 	F
-	DF(x, g mat.Vec)
-	FdF(x, g mat.Vec) float64
+	DF(x, g []float64)
+	FdF(x, g []float64) float64
 }
 
 type FdFddF interface {
 	FdF
-	DDF(x, h mat.Vec)
-	FdFddF(x, g, h mat.Vec) float64
+	DDF(x, h []float64)
+	FdFddF(x, g, h []float64) float64
 }
 
 type Projection interface {
-	Project(x mat.Vec)
+	Project(x []float64)
 }
 
 type LineF struct {
 	f           F
-	x, d, xTemp mat.Vec
+	x, d, xTemp blasw.Vector
 	Dir         float64
 }
 
-func NewLineF(f F, x, d mat.Vec) *LineF {
+func NewLineF(f F, x, d []float64) *LineF {
 	n := len(x)
 	if len(d) != n {
 		panic("dimension mismatch")
 	}
 	return &LineF{
 		f:     f,
-		x:     x,
-		d:     d,
+		x:     blasw.NewVector(x),
+		d:     blasw.NewVector(d),
 		Dir:   1,
-		xTemp: mat.NewVec(n),
+		xTemp: blasw.NewVector(make([]float64, n)),
 	}
 }
 
 func (lf *LineF) F(alpha float64) float64 {
-	lf.xTemp.Copy(lf.x)
-	lf.xTemp.Axpy(lf.Dir*alpha, lf.d)
-	return lf.f.F(lf.xTemp)
+	blasw.Copy(lf.x, lf.xTemp)
+	blasw.Axpy(lf.Dir*alpha, lf.d, lf.xTemp)
+	return lf.f.F(lf.xTemp.Data)
 }
 
 func (lf *LineF) SwitchDir() {
@@ -60,52 +60,52 @@ func (lf *LineF) SwitchDir() {
 
 type LineFdF struct {
 	fdf            FdF
-	x, d, g, xTemp mat.Vec
+	x, d, g, xTemp blasw.Vector
 }
 
-func NewLineFdF(fdf FdF, x, d mat.Vec) *LineFdF {
+func NewLineFdF(fdf FdF, x, d []float64) *LineFdF {
 	n := len(x)
 	if len(d) != n {
 		panic("dimension mismatch")
 	}
 	return &LineFdF{
 		fdf:   fdf,
-		x:     x,
-		d:     d,
-		g:     mat.NewVec(n),
-		xTemp: mat.NewVec(n),
+		x:     blasw.NewVector(x),
+		d:     blasw.NewVector(d),
+		g:     blasw.NewVector(make([]float64, n)),
+		xTemp: blasw.NewVector(make([]float64, n)),
 	}
 }
 
-func (lf *LineFdF) F(x float64) float64 {
-	lf.xTemp.Copy(lf.x)
-	lf.xTemp.Axpy(x, lf.d)
-	return lf.fdf.F(lf.xTemp)
+func (lf *LineFdF) F(alpha float64) float64 {
+	blasw.Copy(lf.x, lf.xTemp)
+	blasw.Axpy(alpha, lf.d, lf.xTemp)
+	return lf.fdf.F(lf.xTemp.Data)
 }
 
-func (lf *LineFdF) DF(x float64) float64 {
-	lf.xTemp.Copy(lf.x)
-	lf.xTemp.Axpy(x, lf.d)
-	lf.fdf.DF(lf.xTemp, lf.g)
+func (lf *LineFdF) DF(alpha float64) float64 {
+	blasw.Copy(lf.x, lf.xTemp)
+	blasw.Axpy(alpha, lf.d, lf.xTemp)
+	lf.fdf.DF(lf.xTemp.Data, lf.g.Data)
 
-	return mat.Dot(lf.d, lf.g)
+	return blasw.Dot(lf.d, lf.g)
 }
 
-func (lf *LineFdF) FdF(x float64) (float64, float64) {
-	lf.xTemp.Copy(lf.x)
-	lf.xTemp.Axpy(x, lf.d)
-	val := lf.fdf.FdF(lf.xTemp, lf.g)
+func (lf *LineFdF) FdF(alpha float64) (float64, float64) {
+	blasw.Copy(lf.x, lf.xTemp)
+	blasw.Axpy(alpha, lf.d, lf.xTemp)
+	val := lf.fdf.FdF(lf.xTemp.Data, lf.g.Data)
 
-	return val, mat.Dot(lf.d, lf.g)
+	return val, blasw.Dot(lf.d, lf.g)
 }
 
 type LineFProj struct {
 	f           F
 	p           Projection
-	x, d, xTemp mat.Vec
+	x, d, xTemp blasw.Vector
 }
 
-func NewLineFProj(f F, p Projection, x, d mat.Vec) *LineFProj {
+func NewLineFProj(f F, p Projection, x, d []float64) *LineFProj {
 	n := len(x)
 	if len(d) != n {
 		panic("dimension mismatch")
@@ -113,15 +113,15 @@ func NewLineFProj(f F, p Projection, x, d mat.Vec) *LineFProj {
 	return &LineFProj{
 		f:     f,
 		p:     p,
-		x:     x,
-		d:     d,
-		xTemp: mat.NewVec(n),
+		x:     blasw.NewVector(x),
+		d:     blasw.NewVector(d),
+		xTemp: blasw.NewVector(make([]float64, n)),
 	}
 }
 
-func (lf *LineFProj) F(x float64) float64 {
-	lf.xTemp.Copy(lf.x)
-	lf.xTemp.Axpy(x, lf.d)
-	lf.p.Project(lf.xTemp)
-	return lf.f.F(lf.xTemp)
+func (lf *LineFProj) F(alpha float64) float64 {
+	blasw.Copy(lf.x, lf.xTemp)
+	blasw.Axpy(alpha, lf.d, lf.xTemp)
+	lf.p.Project(lf.xTemp.Data)
+	return lf.f.F(lf.xTemp.Data)
 }

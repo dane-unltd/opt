@@ -1,8 +1,8 @@
 package multi
 
 import (
-	"github.com/dane-unltd/linalg/mat"
 	"github.com/dane-unltd/opt/uni"
+	"github.com/gonum/blas/blasw"
 	"time"
 )
 
@@ -34,21 +34,24 @@ func (sol ProjGrad) OptimizeFProj(o FdF, proj Projection, in *Solution, upd ...U
 	n := len(r.X)
 	s := 1.0 //initial step size
 
-	d := mat.NewVec(n)
-	d.Copy(r.Grad)
-	d.Scal(-1)
+	x := blasw.NewVector(r.X)
+	g := blasw.NewVector(r.Grad)
+	d := blasw.NewVector(make([]float64, n))
 
-	xTemp := mat.NewVec(n)
+	blasw.Copy(g, d)
+	blasw.Scal(-1, d)
 
-	xTemp.Copy(r.X)
-	xTemp.Axpy(s/2, d)
-	proj.Project(xTemp)
-	xTemp.Sub(xTemp, r.X)
-	xTemp.Scal(2 / s)
+	xTemp := blasw.NewVector(make([]float64, n))
 
-	gLin := -xTemp.Nrm2Sq()
+	blasw.Copy(x, xTemp)
+	blasw.Axpy(s/2, d, xTemp)
+	proj.Project(xTemp.Data)
+	blasw.Axpy(-1, x, xTemp)
+	blasw.Scal(2/s, xTemp)
 
-	lineFunc := NewLineFProj(obj, proj, r.X, d)
+	gLin := -blasw.Dot(xTemp, xTemp)
+
+	lineFunc := NewLineFProj(obj, proj, r.X, d.Data)
 	lsInit := uni.NewSolution()
 
 	for doUpdates(r, initialTime, upd) == 0 {
@@ -61,20 +64,20 @@ func (sol ProjGrad) OptimizeFProj(o FdF, proj Projection, in *Solution, upd ...U
 		}
 		s, r.Obj = lsRes.X, lsRes.Obj
 
-		r.X.Axpy(s, d)
+		blasw.Axpy(s, d, x)
 		proj.Project(r.X)
 
 		obj.DF(r.X, r.Grad)
-		d.Copy(r.Grad)
-		d.Scal(-1)
+		blasw.Copy(g, d)
+		blasw.Scal(-1, d)
 
-		xTemp.Copy(r.X)
-		xTemp.Axpy(s/2, d)
-		proj.Project(xTemp)
-		xTemp.Sub(xTemp, r.X)
-		xTemp.Scal(2 / s)
+		blasw.Copy(x, xTemp)
+		blasw.Axpy(s/2, d, xTemp)
+		proj.Project(xTemp.Data)
+		blasw.Axpy(-1, x, xTemp)
+		blasw.Scal(2/s, xTemp)
 
-		gLin = -xTemp.Nrm2Sq()
+		gLin = -blasw.Dot(xTemp, xTemp)
 	}
 	return r
 }

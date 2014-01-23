@@ -2,8 +2,8 @@ package multi
 
 import (
 	"fmt"
-	"github.com/dane-unltd/linalg/mat"
 	"github.com/dane-unltd/opt/uni"
+	"github.com/gonum/blas/blasw"
 	"time"
 )
 
@@ -37,60 +37,63 @@ func (sol LBFGS) OptimizeFdF(o FdF, in *Solution, upd ...Updater) *Result {
 	gLin := 0.0
 	n := len(r.X)
 
-	S := make([]mat.Vec, sol.Mem)
-	Y := make([]mat.Vec, sol.Mem)
+	S := make([]blasw.Vector, sol.Mem)
+	Y := make([]blasw.Vector, sol.Mem)
 	for i := 0; i < sol.Mem; i++ {
-		S[i] = mat.NewVec(n)
-		Y[i] = mat.NewVec(n)
+		S[i] = blasw.NewVector(make([]float64, n))
+		Y[i] = blasw.NewVector(make([]float64, n))
 	}
 
-	d := mat.NewVec(n)
+	x := blasw.NewVector(r.X)
+	g := blasw.NewVector(r.Grad)
+	d := blasw.NewVector(make([]float64, n))
 
-	xOld := mat.NewVec(n)
-	gOld := mat.NewVec(n)
-	sNew := mat.NewVec(n)
-	yNew := mat.NewVec(n)
+	xOld := blasw.NewVector(make([]float64, n))
+	gOld := blasw.NewVector(make([]float64, n))
+	sNew := blasw.NewVector(make([]float64, n))
+	yNew := blasw.NewVector(make([]float64, n))
 
-	alphas := mat.NewVec(sol.Mem)
-	betas := mat.NewVec(sol.Mem)
-	rhos := mat.NewVec(sol.Mem)
+	alphas := make([]float64, sol.Mem)
+	betas := make([]float64, sol.Mem)
+	rhos := make([]float64, sol.Mem)
 
-	lineFunc := NewLineFdF(obj, r.X, d)
+	lineFunc := NewLineFdF(obj, r.X, d.Data)
 	lsInit := uni.NewSolution()
 
 	notFirst := false
 	for doUpdates(r, initialTime, upd) == 0 {
-		d.Copy(r.Grad)
+		blasw.Copy(g, d)
 		if notFirst {
-			yNew.Sub(r.Grad, gOld)
-			sNew.Sub(r.X, xOld)
+			blasw.Copy(g, yNew)
+			blasw.Axpy(-1, gOld, yNew)
+			blasw.Copy(x, sNew)
+			blasw.Axpy(-1, xOld, sNew)
 
 			temp := S[len(S)-1]
 			copy(S[1:], S)
 			S[0] = temp
-			S[0].Copy(sNew)
+			blasw.Copy(sNew, S[0])
 
 			temp = Y[len(S)-1]
 			copy(Y[1:], Y)
 			Y[0] = temp
-			Y[0].Copy(yNew)
+			blasw.Copy(yNew, Y[0])
 
 			copy(rhos[1:], rhos)
-			rhos[0] = 1 / mat.Dot(sNew, yNew)
+			rhos[0] = 1 / blasw.Dot(sNew, yNew)
 			for i := 0; i < sol.Mem; i++ {
-				alphas[i] = rhos[i] * mat.Dot(S[i], d)
-				d.Axpy(-alphas[i], Y[i])
+				alphas[i] = rhos[i] * blasw.Dot(S[i], d)
+				blasw.Axpy(-alphas[i], Y[i], d)
 			}
 			for i := sol.Mem - 1; i >= 0; i-- {
-				betas[i] = rhos[i] * mat.Dot(Y[i], d)
-				d.Axpy(alphas[i]-betas[i], S[i])
+				betas[i] = rhos[i] * blasw.Dot(Y[i], d)
+				blasw.Axpy(alphas[i]-betas[i], S[i], d)
 			}
 		}
 		notFirst = true
 
-		d.Scal(-1)
-
-		gLin = mat.Dot(d, r.Grad)
+		blasw.Scal(-1, d)
+		gLin = blasw.Dot(d, g)
 
 		wolfe := uni.Wolfe{
 			Armijo:    0.2,
@@ -105,9 +108,9 @@ func (sol LBFGS) OptimizeFdF(o FdF, in *Solution, upd ...Updater) *Result {
 		lsRes := sol.LineSearch.OptimizeFdF(lineFunc, lsInit, wolfe)
 		if lsRes.Status < 0 {
 			fmt.Println("Linesearch:", lsRes.Status)
-			d.Copy(r.Grad)
-			d.Scal(-1)
-			lsInit.SetLower(0, r.Obj, -r.Grad.Nrm2Sq())
+			blasw.Copy(g, d)
+			blasw.Scal(-1, d)
+			lsInit.SetLower(0, r.Obj, blasw.Nrm2(g))
 			lsRes = sol.LineSearch.OptimizeFdF(lineFunc, lsInit, wolfe)
 			if lsRes.Status < 0 {
 				fmt.Println("Linesearch:", lsRes.Status)
@@ -119,10 +122,10 @@ func (sol LBFGS) OptimizeFdF(o FdF, in *Solution, upd ...Updater) *Result {
 		stepSize := lsRes.X
 		r.Obj = lsRes.Obj
 
-		xOld.Copy(r.X)
-		gOld.Copy(r.Grad)
+		blasw.Copy(x, xOld)
+		blasw.Copy(g, gOld)
 
-		r.X.Axpy(stepSize, d)
+		blasw.Axpy(stepSize, d, x)
 		obj.DF(r.X, r.Grad)
 	}
 	return r

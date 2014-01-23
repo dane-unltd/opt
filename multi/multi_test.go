@@ -2,39 +2,41 @@ package multi
 
 import (
 	"fmt"
-	"github.com/dane-unltd/linalg/lapack/lapacke"
-	"github.com/dane-unltd/linalg/mat"
 	"github.com/dane-unltd/opt"
 	"github.com/dane-unltd/opt/uni"
+	"github.com/gonum/blas"
+	"github.com/gonum/blas/blasw"
 	"github.com/gonum/blas/cblas"
 	"math"
+	"math/rand"
 	"testing"
 )
 
 var cops struct {
 	cblas.Blas
-	lapacke.Lapack
 }
 
 func init() {
-	mat.Register(cops)
+	blasw.Register(cops)
+	blasw.SetOrder(blas.ColMajor)
 }
 
 func TestExampleModel(t *testing.T) {
 	//badly conditioned Hessian leads to zig-zagging of the steepest descent
 	//algorithm
 	condNo := 100.0
-	optSol := mat.Vec{1, 2}
+	optSol := blasw.NewVector([]float64{1, 2})
 
-	A := mat.NewFromArray([]float64{condNo, 0, 0, 1}, true, 2, 2)
-	b := mat.Vec{-2 * optSol[0] * condNo, -2 * optSol[1]}
-	c := -0.5 * mat.Dot(b, optSol)
+	A := blasw.NewGe(2, 2, []float64{condNo, 0, 0, 1})
+	b := blasw.NewVector([]float64{-2 * optSol.Data[0] * condNo,
+		-2 * optSol.Data[1]})
+	c := -0.5 * blasw.Dot(b, optSol)
 
 	//define objective function
-	fun := opt.NewQuadratic(A, b, c)
+	fun := opt.NewQuadratic(A, b.Data, c)
 
 	//set inital solution estimate
-	sol := NewSolution(mat.NewVec(2))
+	sol := NewSolution(make([]float64, 2))
 
 	//set termination parameters
 	p := NewParams()
@@ -54,26 +56,31 @@ func TestExampleModel(t *testing.T) {
 }
 
 func TestQuadratic(t *testing.T) {
-	mat.Register(cops)
-	n := 10
-	xStar := mat.NewVec(n)
-	xStar.AddSc(1)
-	A := mat.RandN(n)
-	At := A.TrView()
-	AtA := mat.New(n)
-	AtA.Mul(At, A)
+	blasw.Register(cops)
 
-	bTmp := mat.NewVec(n)
-	bTmp.Transform(A, xStar)
-	b := mat.NewVec(n)
-	b.Transform(At, bTmp)
-	b.Scal(-2)
+	n := 5
 
-	c := bTmp.Nrm2Sq()
+	xStar := blasw.NewVector(make([]float64, n))
+	for i := range xStar.Data {
+		xStar.Data[i] = 1
+	}
+	A := blasw.NewGe(n, n, make([]float64, n*n))
+	for i := range A.Data {
+		A.Data[i] = rand.NormFloat64()
+	}
+	AtA := blasw.NewGe(n, n, make([]float64, n*n))
+	blasw.Gemm(blas.Trans, blas.NoTrans, 1, A, A, 0, AtA)
+
+	bTmp := blasw.NewVector(make([]float64, n))
+	blasw.Gemv(blas.NoTrans, 1, A, xStar, 0, bTmp)
+	b := blasw.NewVector(make([]float64, n))
+	blasw.Gemv(blas.Trans, -2, A, bTmp, 0, b)
+
+	c := blasw.Dot(bTmp, bTmp)
 
 	//Define input arguments
-	obj := opt.NewQuadratic(AtA, b, c)
-	sol := NewSolution(mat.NewVec(n))
+	obj := opt.NewQuadratic(AtA, b.Data, c)
+	sol := NewSolution(make([]float64, n))
 
 	//Steepest descent with Backtracking
 	stDesc := NewSteepestDescent()
@@ -100,14 +107,12 @@ func TestQuadratic(t *testing.T) {
 
 	t.Log(res4.Obj, res4.FunEvals, res4.GradEvals, res4.Status)
 
-	/*
-		if math.Abs(res1.Obj) > 0.01 {
-			t.Fail()
-		}
-		if math.Abs(res2.Obj) > 0.01 {
-			t.Fail()
-		}
-	*/
+	if math.Abs(res1.Obj) > 0.01 {
+		t.Fail()
+	}
+	if math.Abs(res2.Obj) > 0.01 {
+		t.Fail()
+	}
 	if math.Abs(res3.Obj) > 0.01 {
 		t.Fail()
 	}
@@ -117,11 +122,15 @@ func TestQuadratic(t *testing.T) {
 }
 
 func TestRosenbrock(t *testing.T) {
-	mat.Register(cops)
+	blasw.Register(cops)
 
 	n := 10
 	scale := 10.0
-	xInit := mat.RandVec(n).Scal(scale)
+
+	xInit := make([]float64, n)
+	for i := range xInit {
+		xInit[i] = scale * rand.Float64()
+	}
 
 	//Define input arguments
 	obj := opt.Rosenbrock{}
@@ -174,14 +183,20 @@ func (r rb) FdF() {}
 
 type rosTest struct{}
 
-func (r rosTest) F(x mat.Vec) float64 {
+func (r rosTest) F(x []float64) float64 {
 	return math.Pow(x[0]-2, 4) + math.Pow(x[0]-2*x[1], 2)
 }
 
 func TestSolve(t *testing.T) {
-	mat.Register(cops)
+	blasw.Register(cops)
 
-	xInit := mat.RandVec(10).Scal(10.0)
+	n := 10
+	scale := 10.0
+
+	xInit := make([]float64, n)
+	for i := range xInit {
+		xInit[i] = scale * rand.Float64()
+	}
 	sol := NewSolution(xInit)
 
 	result := OptimizeF(opt.Rosenbrock{}, sol, nil, NewDeltaXConv(1e-6), NewDisplay(10))
@@ -204,7 +219,7 @@ func TestSolve(t *testing.T) {
 	result = OptimizeF(rb{}, sol, params, NewDisplay(3))
 	t.Log(result.Status, result.Obj, result.Iter, result.X)
 
-	xInit = mat.Vec{0, 3}
+	xInit = []float64{0, 3}
 	sol.SetX(xInit, false)
 	result = OptimizeF(rosTest{}, sol, params, NewDisplay(10))
 	t.Log(result.Status, result.Obj, result.Iter)

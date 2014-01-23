@@ -1,7 +1,6 @@
 package multi
 
 import (
-	"github.com/dane-unltd/linalg/mat"
 	"time"
 )
 
@@ -23,8 +22,8 @@ func NewResult(in *Solution) *Result {
 	r.Solution.SetX(in.X, true)
 	r.Obj = in.Obj
 	if in.Grad != nil {
-		r.Grad = make(mat.Vec, len(in.Grad))
-		r.Grad.Copy(in.Grad)
+		r.Grad = make([]float64, len(in.Grad))
+		copy(r.Grad, in.Grad)
 	}
 	return r
 }

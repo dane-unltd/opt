@@ -2,7 +2,7 @@ package multi
 
 import (
 	"github.com/dane-unltd/opt/uni"
-	"github.com/gonum/matrix/mat64"
+	"github.com/gonum/blas/blasw"
 	"time"
 )
 
@@ -33,13 +33,17 @@ func (sol SteepestDescent) OptimizeFdF(o FdF, in *Solution, upd ...Updater) *Res
 
 	n := len(r.X)
 	s := 1.0 //initial step size
-	gLin := -r.Grad.Nrm2Sq()
 
-	d := make(mat64.Vec, n)
-	copy(d, r.Grad)
-	d.Scal(-1)
+	x := blasw.NewVector(r.X)
+	g := blasw.NewVector(r.Grad)
+	d := blasw.NewVector(make([]float64, n))
 
-	lineFunc := NewLineFdF(obj, r.X, d)
+	gLin := -blasw.Dot(g, g)
+
+	blasw.Copy(g, d)
+	blasw.Scal(-1, d)
+
+	lineFunc := NewLineFdF(obj, r.X, d.Data)
 	lsInit := uni.NewSolution()
 
 	for doUpdates(r, initialTime, upd) == 0 {
@@ -62,13 +66,13 @@ func (sol SteepestDescent) OptimizeFdF(o FdF, in *Solution, upd ...Updater) *Res
 		}
 		s, r.Obj = lsRes.X, lsRes.Obj
 
-		r.X.Axpy(s, d)
+		blasw.Axpy(s, d, x)
 
 		obj.DF(r.X, r.Grad)
-		d.Copy(r.Grad)
-		d.Scal(-1)
+		blasw.Copy(g, d)
+		blasw.Scal(-1, d)
 
-		gLin = -d.Nrm2Sq()
+		gLin = -blasw.Dot(d, d)
 	}
 	return r
 }

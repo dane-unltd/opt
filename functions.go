@@ -1,73 +1,68 @@
 package opt
 
 import (
-	"github.com/dane-unltd/linalg/mat"
+	"github.com/gonum/blas"
+	"github.com/gonum/blas/blasw"
 	"math"
 )
 
 //objective of the form x'*A*x + b'*x + c
 type Quadratic struct {
-	A *mat.Dense
-	B mat.Vec
+	A blasw.Ge
+	B blasw.Vector
 	C float64
 
-	temp mat.Vec
+	temp blasw.Vector
 }
 
-func NewQuadratic(A *mat.Dense, b mat.Vec, c float64) *Quadratic {
-	m, n := A.Dims()
-	if m != n {
+func NewQuadratic(A blasw.Ge, b []float64, c float64) *Quadratic {
+	if A.M != A.N {
 		panic("matrix has to be quadratic")
 	}
-	if n != len(b) {
+	if A.N != len(b) {
 		panic("dimension mismatch between A and b")
 	}
 	return &Quadratic{
 		A:    A,
-		B:    b,
+		B:    blasw.NewVector(b),
 		C:    c,
-		temp: mat.NewVec(n),
+		temp: blasw.NewVector(make([]float64, A.N)),
 	}
 }
 
-func (Q *Quadratic) F(x mat.Vec) float64 {
-	val := 0.0
-	Q.temp.Transform(Q.A, x)
-	val += mat.Dot(x, Q.temp)
-	val += mat.Dot(x, Q.B)
-	val += Q.C
-	return val
+func (Q *Quadratic) F(xs []float64) float64 {
+	x := blasw.NewVector(xs)
+	blasw.Copy(Q.B, Q.temp)
+	blasw.Gemv(blas.NoTrans, 1, Q.A, x, 1, Q.temp)
+	return blasw.Dot(x, Q.temp) + Q.C
 }
 
-func (Q *Quadratic) DF(x, g mat.Vec) {
-	At := Q.A.TrView()
+func (Q *Quadratic) DF(xs, gs []float64) {
+	x := blasw.NewVector(xs)
+	g := blasw.NewVector(gs)
 
-	Q.temp.Transform(Q.A, x)
-
-	g.Transform(At, x)
-	g.Add(g, Q.temp)
-	g.Add(g, Q.B)
+	blasw.Copy(Q.B, g)
+	blasw.Gemv(blas.NoTrans, 1, Q.A, x, 1, g)
+	blasw.Gemv(blas.Trans, 1, Q.A, x, 1, g)
 }
 
-func (Q *Quadratic) FdF(x, g mat.Vec) float64 {
-	At := Q.A.TrView()
+func (Q *Quadratic) FdF(xs, gs []float64) float64 {
+	x := blasw.NewVector(xs)
+	g := blasw.NewVector(gs)
 
-	Q.temp.Transform(Q.A, x)
+	blasw.Copy(Q.B, g)
+	blasw.Gemv(blas.NoTrans, 1, Q.A, x, 1, g)
 
-	g.Transform(At, x)
-	g.Add(g, Q.temp)
-	g.Add(g, Q.B)
+	val := blasw.Dot(g, x) + Q.C
 
-	val := 0.0
-	val += mat.Dot(x, Q.temp)
-	val += mat.Dot(x, Q.B)
-	val += Q.C
+	blasw.Gemv(blas.Trans, 1, Q.A, x, 1, g)
+
 	return val
 }
 
 type Rosenbrock struct{}
 
-func (R Rosenbrock) F(x mat.Vec) float64 {
+func (R Rosenbrock) F(x []float64) float64 {
 	sum := 0.0
 	for i := 0; i < len(x)-1; i++ {
 		sum += math.Pow(1-x[i], 2) +
@@ -76,7 +71,7 @@ func (R Rosenbrock) F(x mat.Vec) float64 {
 	return sum
 }
 
-func (R Rosenbrock) DF(x, g mat.Vec) {
+func (R Rosenbrock) DF(x, g []float64) {
 	g[len(x)-1] = 0
 	for i := 0; i < len(x)-1; i++ {
 		g[i] = -1 * 2 * (1 - x[i])
@@ -87,7 +82,7 @@ func (R Rosenbrock) DF(x, g mat.Vec) {
 	}
 }
 
-func (R Rosenbrock) FdF(x, g mat.Vec) float64 {
+func (R Rosenbrock) FdF(x, g []float64) float64 {
 	g[len(x)-1] = 0
 	for i := 0; i < len(x)-1; i++ {
 		g[i] = -1 * 2 * (1 - x[i])
@@ -107,7 +102,7 @@ func (R Rosenbrock) FdF(x, g mat.Vec) float64 {
 
 type RealPlus struct{}
 
-func (R RealPlus) Project(x mat.Vec) {
+func (R RealPlus) Project(x []float64) {
 	for i := range x {
 		if x[i] < 0 {
 			x[i] = 0

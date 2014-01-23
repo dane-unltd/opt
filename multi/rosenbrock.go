@@ -1,8 +1,8 @@
 package multi
 
 import (
-	"github.com/dane-unltd/linalg/mat"
 	"github.com/dane-unltd/opt/uni"
+	"github.com/gonum/blas/blasw"
 	"math"
 	"time"
 )
@@ -38,18 +38,19 @@ func (sol *Rosenbrock) OptimizeF(o F, in *Solution, upd ...Updater) *Result {
 
 	eps := 1.0
 	n := len(r.X)
+	x := blasw.NewVector(r.X)
 
-	d := make([]mat.Vec, n)
+	d := make([]blasw.Vector, n)
 	for i := range d {
-		d[i] = mat.NewVec(n)
-		d[i][i] = 1
+		d[i] = blasw.NewVector(make([]float64, n))
+		d[i].Data[i] = 1
 	}
 
 	lambda := make([]float64, n)
 
 	lf := make([]*LineF, n)
 	for i := range lf {
-		lf[i] = NewLineF(obj, r.X, d[i])
+		lf[i] = NewLineF(obj, r.X, d[i].Data)
 	}
 
 	lsInit := uni.NewSolution()
@@ -84,25 +85,26 @@ func (sol *Rosenbrock) OptimizeF(o F, in *Solution, upd ...Updater) *Result {
 				uni.Accuracy(eps*0.5))
 
 			lambda[i] = lf[i].Dir * lsRes.X
-			r.X.Axpy(lambda[i], d[i])
+
+			blasw.Axpy(lambda[i], d[i], x)
 			r.Obj = lsRes.Obj
 		}
 
 		//Find new directions
 		for i := range d {
 			if math.Abs(lambda[i]) > sol.Accuracy {
-				d[i].Scal(lambda[i])
+				blasw.Scal(lambda[i], d[i])
 				for j := i + 1; j < n; j++ {
-					d[i].Axpy(lambda[j], d[j])
+					blasw.Axpy(lambda[j], d[j], d[i])
 				}
 			}
 		}
 
 		//Gram-Schmidt, TODO:use QR factorization
 		for i := range d {
-			d[i].Scal(1 / d[i].Nrm2())
+			blasw.Scal(1/blasw.Nrm2(d[i]), d[i])
 			for j := i + 1; j < n; j++ {
-				d[j].Axpy(-mat.Dot(d[i], d[j]), d[i])
+				blasw.Axpy(-blasw.Dot(d[i], d[j]), d[i], d[j])
 			}
 		}
 

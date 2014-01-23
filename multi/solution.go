@@ -1,19 +1,18 @@
 package multi
 
 import (
-	"github.com/dane-unltd/linalg/mat"
 	"math"
 )
 
 var nan = math.NaN()
 
 type Solution struct {
-	X    mat.Vec
+	X    []float64
 	Obj  float64
-	Grad mat.Vec
+	Grad []float64
 }
 
-func NewSolution(x mat.Vec) *Solution {
+func NewSolution(x []float64) *Solution {
 	return &Solution{
 		X:    x,
 		Obj:  nan,
@@ -29,7 +28,7 @@ func (s *Solution) initF(obj fWrapper) {
 
 func (s *Solution) initFdF(obj fdfWrapper) {
 	if s.Grad == nil {
-		s.Grad = make(mat.Vec, len(s.X))
+		s.Grad = make([]float64, len(s.X))
 		s.Obj = obj.FdF(s.X, s.Grad)
 	}
 	if math.IsNaN(s.Obj) {
@@ -37,12 +36,12 @@ func (s *Solution) initFdF(obj fdfWrapper) {
 	}
 }
 
-func (s *Solution) SetX(x mat.Vec, cpy bool) {
+func (s *Solution) SetX(x []float64, cpy bool) {
 	if cpy {
 		if s.X == nil {
-			s.X = make(mat.Vec, len(x))
+			s.X = make([]float64, len(x))
 		}
-		s.X.Copy(x)
+		copy(s.X, x)
 	} else {
 		s.X = x
 	}
