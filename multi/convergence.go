@@ -21,8 +21,8 @@ func (dx *DeltaXConv) Update(r *Result) Status {
 		return NotTerminated
 	}
 	copy(dx.tmp, r.X)
-	blasw.Axpy(-1, blasw.NewVector(dx.oldX), blasw.NewVector(dx.tmp))
-	if blasw.Nrm2(blasw.NewVector(dx.tmp)) < dx.Tol {
+	blasw.Daxpy(-1, blasw.NewVector(dx.oldX), blasw.NewVector(dx.tmp))
+	if blasw.Dnrm2(blasw.NewVector(dx.tmp)) < dx.Tol {
 		return XAbsConv
 	}
 	copy(dx.oldX, r.X)
@@ -34,7 +34,7 @@ type GradConv struct {
 }
 
 func (gc GradConv) Update(r *Result) Status {
-	if blasw.Nrm2(blasw.NewVector(r.Grad)) < gc.Tol {
+	if blasw.Dnrm2(blasw.NewVector(r.Grad)) < gc.Tol {
 		return GradAbsConv
 	}
 	return NotTerminated

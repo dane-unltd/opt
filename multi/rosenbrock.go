@@ -86,25 +86,25 @@ func (sol *Rosenbrock) OptimizeF(o F, in *Solution, upd ...Updater) *Result {
 
 			lambda[i] = lf[i].Dir * lsRes.X
 
-			blasw.Axpy(lambda[i], d[i], x)
+			blasw.Daxpy(lambda[i], d[i], x)
 			r.Obj = lsRes.Obj
 		}
 
 		//Find new directions
 		for i := range d {
 			if math.Abs(lambda[i]) > sol.Accuracy {
-				blasw.Scal(lambda[i], d[i])
+				blasw.Dscal(lambda[i], d[i])
 				for j := i + 1; j < n; j++ {
-					blasw.Axpy(lambda[j], d[j], d[i])
+					blasw.Daxpy(lambda[j], d[j], d[i])
 				}
 			}
 		}
 
 		//Gram-Schmidt, TODO:use QR factorization
 		for i := range d {
-			blasw.Scal(1/blasw.Nrm2(d[i]), d[i])
+			blasw.Dscal(1/blasw.Dnrm2(d[i]), d[i])
 			for j := i + 1; j < n; j++ {
-				blasw.Axpy(-blasw.Dot(d[i], d[j]), d[i], d[j])
+				blasw.Daxpy(-blasw.Ddot(d[i], d[j]), d[i], d[j])
 			}
 		}
 

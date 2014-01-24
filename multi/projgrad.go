@@ -38,18 +38,18 @@ func (sol ProjGrad) OptimizeFProj(o FdF, proj Projection, in *Solution, upd ...U
 	g := blasw.NewVector(r.Grad)
 	d := blasw.NewVector(make([]float64, n))
 
-	blasw.Copy(g, d)
-	blasw.Scal(-1, d)
+	blasw.Dcopy(g, d)
+	blasw.Dscal(-1, d)
 
 	xTemp := blasw.NewVector(make([]float64, n))
 
-	blasw.Copy(x, xTemp)
-	blasw.Axpy(s/2, d, xTemp)
+	blasw.Dcopy(x, xTemp)
+	blasw.Daxpy(s/2, d, xTemp)
 	proj.Project(xTemp.Data)
-	blasw.Axpy(-1, x, xTemp)
-	blasw.Scal(2/s, xTemp)
+	blasw.Daxpy(-1, x, xTemp)
+	blasw.Dscal(2/s, xTemp)
 
-	gLin := -blasw.Dot(xTemp, xTemp)
+	gLin := -blasw.Ddot(xTemp, xTemp)
 
 	lineFunc := NewLineFProj(obj, proj, r.X, d.Data)
 	lsInit := uni.NewSolution()
@@ -64,20 +64,20 @@ func (sol ProjGrad) OptimizeFProj(o FdF, proj Projection, in *Solution, upd ...U
 		}
 		s, r.Obj = lsRes.X, lsRes.Obj
 
-		blasw.Axpy(s, d, x)
+		blasw.Daxpy(s, d, x)
 		proj.Project(r.X)
 
 		obj.DF(r.X, r.Grad)
-		blasw.Copy(g, d)
-		blasw.Scal(-1, d)
+		blasw.Dcopy(g, d)
+		blasw.Dscal(-1, d)
 
-		blasw.Copy(x, xTemp)
-		blasw.Axpy(s/2, d, xTemp)
+		blasw.Dcopy(x, xTemp)
+		blasw.Daxpy(s/2, d, xTemp)
 		proj.Project(xTemp.Data)
-		blasw.Axpy(-1, x, xTemp)
-		blasw.Scal(2/s, xTemp)
+		blasw.Daxpy(-1, x, xTemp)
+		blasw.Dscal(2/s, xTemp)
 
-		gLin = -blasw.Dot(xTemp, xTemp)
+		gLin = -blasw.Ddot(xTemp, xTemp)
 	}
 	return r
 }

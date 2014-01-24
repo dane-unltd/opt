@@ -1,9 +1,7 @@
 package linprog
 
-import (
-	"github.com/dane-unltd/linalg/mat"
-)
+import ()
 
 type Solution struct {
-	X, Y, S mat.Vec
+	X, Y, S []float64
 }

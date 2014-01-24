@@ -30,7 +30,7 @@ func TestExampleModel(t *testing.T) {
 	A := blasw.NewGe(2, 2, []float64{condNo, 0, 0, 1})
 	b := blasw.NewVector([]float64{-2 * optSol.Data[0] * condNo,
 		-2 * optSol.Data[1]})
-	c := -0.5 * blasw.Dot(b, optSol)
+	c := -0.5 * blasw.Ddot(b, optSol)
 
 	//define objective function
 	fun := opt.NewQuadratic(A, b.Data, c)
@@ -76,7 +76,7 @@ func TestQuadratic(t *testing.T) {
 	b := blasw.NewVector(make([]float64, n))
 	blasw.Gemv(blas.Trans, -2, A, bTmp, 0, b)
 
-	c := blasw.Dot(bTmp, bTmp)
+	c := blasw.Ddot(bTmp, bTmp)
 
 	//Define input arguments
 	obj := opt.NewQuadratic(AtA, b.Data, c)

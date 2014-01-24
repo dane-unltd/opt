@@ -38,10 +38,10 @@ func (sol SteepestDescent) OptimizeFdF(o FdF, in *Solution, upd ...Updater) *Res
 	g := blasw.NewVector(r.Grad)
 	d := blasw.NewVector(make([]float64, n))
 
-	gLin := -blasw.Dot(g, g)
+	gLin := -blasw.Ddot(g, g)
 
-	blasw.Copy(g, d)
-	blasw.Scal(-1, d)
+	blasw.Dcopy(g, d)
+	blasw.Dscal(-1, d)
 
 	lineFunc := NewLineFdF(obj, r.X, d.Data)
 	lsInit := uni.NewSolution()
@@ -66,13 +66,13 @@ func (sol SteepestDescent) OptimizeFdF(o FdF, in *Solution, upd ...Updater) *Res
 		}
 		s, r.Obj = lsRes.X, lsRes.Obj
 
-		blasw.Axpy(s, d, x)
+		blasw.Daxpy(s, d, x)
 
 		obj.DF(r.X, r.Grad)
-		blasw.Copy(g, d)
-		blasw.Scal(-1, d)
+		blasw.Dcopy(g, d)
+		blasw.Dscal(-1, d)
 
-		gLin = -blasw.Dot(d, d)
+		gLin = -blasw.Ddot(d, d)
 	}
 	return r
 }

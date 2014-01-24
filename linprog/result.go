@@ -1,7 +1,6 @@
 package linprog
 
 import (
-	"github.com/dane-unltd/linalg/mat"
 	"time"
 )
 
@@ -12,17 +11,16 @@ type Stats struct {
 
 type Result struct {
 	Solution
-	Rp, Rd, Rs mat.Vec
+	Rp, Rd, Rs []float64
 	Stats
 	Status Status
 }
 
 func NewResult(prob *Problem) *Result {
 	r := &Result{}
-	m, n := prob.A.Dims()
-	r.X = mat.NewVec(n)
-	r.S = mat.NewVec(n)
-	r.Y = mat.NewVec(m)
+	r.X = make([]float64, len(prob.C))
+	r.S = make([]float64, len(prob.C))
+	r.Y = make([]float64, len(prob.B))
 
 	return r
 

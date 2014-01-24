@@ -1,15 +1,14 @@
 package multi
 
 import (
-	"github.com/dane-unltd/linalg/mat"
 	"time"
 )
 
 type History struct {
 	T    []time.Duration
-	X    []mat.Vec
+	X    [][]float64
 	Obj  []float64
-	Grad []mat.Vec
+	Grad [][]float64
 }
 
 func (h *History) Update(m *Result) Status {
@@ -17,14 +16,14 @@ func (h *History) Update(m *Result) Status {
 		h.T = append(h.T, m.Time)
 	}
 	if h.X != nil {
-		xt := make(mat.Vec, len(m.X))
-		xt.Copy(m.X)
+		xt := make([]float64, len(m.X))
+		copy(xt, m.X)
 		h.X = append(h.X, xt)
 	}
 	if h.Grad != nil {
 		if m.Grad != nil {
-			gt := make(mat.Vec, len(m.Grad))
-			gt.Copy(m.Grad)
+			gt := make([]float64, len(m.Grad))
+			copy(gt, m.Grad)
 			h.Grad = append(h.Grad, gt)
 		}
 	}

@@ -1,17 +1,16 @@
 package linprog
 
 import (
-	"github.com/dane-unltd/linalg/mat"
+	"github.com/gonum/blas/blasw"
 )
 
 type Problem struct {
-	C, B mat.Vec
-	A    *mat.Dense
+	C, B []float64
+	A    blasw.General
 }
 
-func NewStandard(c mat.Vec, A *mat.Dense, b mat.Vec) *Problem {
-	m, n := A.Dims()
-	if len(c) != n || len(b) != m {
+func NewStandard(c []float64, A General, b []float64) *Problem {
+	if len(c) != A.N || len(b) != A.M {
 		panic("linprog: dimension mismatch")
 	}
 	return &Problem{
