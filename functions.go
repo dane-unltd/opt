@@ -1,21 +1,21 @@
 package opt
 
 import (
+	"github.com/dane-unltd/goblas"
 	"github.com/gonum/blas"
-	"github.com/gonum/blas/blasw"
 	"math"
 )
 
 //objective of the form x'*A*x + b'*x + c
 type Quadratic struct {
-	A blasw.General
-	B blasw.Vector
+	A goblas.General
+	B goblas.Vector
 	C float64
 
-	temp blasw.Vector
+	temp goblas.Vector
 }
 
-func NewQuadratic(A blasw.General, b []float64, c float64) *Quadratic {
+func NewQuadratic(A goblas.General, b []float64, c float64) *Quadratic {
 	if A.M != A.N {
 		panic("matrix has to be quadratic")
 	}
@@ -24,38 +24,38 @@ func NewQuadratic(A blasw.General, b []float64, c float64) *Quadratic {
 	}
 	return &Quadratic{
 		A:    A,
-		B:    blasw.NewVector(b),
+		B:    goblas.NewVector(b),
 		C:    c,
-		temp: blasw.NewVector(make([]float64, A.N)),
+		temp: goblas.NewVector(make([]float64, A.N)),
 	}
 }
 
 func (Q *Quadratic) F(xs []float64) float64 {
-	x := blasw.NewVector(xs)
-	blasw.Dcopy(Q.B, Q.temp)
-	blasw.Dgemv(blas.NoTrans, 1, Q.A, x, 1, Q.temp)
-	return blasw.Ddot(x, Q.temp) + Q.C
+	x := goblas.NewVector(xs)
+	goblas.Dcopy(Q.B, Q.temp)
+	goblas.Dgemv(blas.NoTrans, 1, Q.A, x, 1, Q.temp)
+	return goblas.Ddot(x, Q.temp) + Q.C
 }
 
 func (Q *Quadratic) DF(xs, gs []float64) {
-	x := blasw.NewVector(xs)
-	g := blasw.NewVector(gs)
+	x := goblas.NewVector(xs)
+	g := goblas.NewVector(gs)
 
-	blasw.Dcopy(Q.B, g)
-	blasw.Dgemv(blas.NoTrans, 1, Q.A, x, 1, g)
-	blasw.Dgemv(blas.Trans, 1, Q.A, x, 1, g)
+	goblas.Dcopy(Q.B, g)
+	goblas.Dgemv(blas.NoTrans, 1, Q.A, x, 1, g)
+	goblas.Dgemv(blas.Trans, 1, Q.A, x, 1, g)
 }
 
 func (Q *Quadratic) FdF(xs, gs []float64) float64 {
-	x := blasw.NewVector(xs)
-	g := blasw.NewVector(gs)
+	x := goblas.NewVector(xs)
+	g := goblas.NewVector(gs)
 
-	blasw.Dcopy(Q.B, g)
-	blasw.Dgemv(blas.NoTrans, 1, Q.A, x, 1, g)
+	goblas.Dcopy(Q.B, g)
+	goblas.Dgemv(blas.NoTrans, 1, Q.A, x, 1, g)
 
-	val := blasw.Ddot(g, x) + Q.C
+	val := goblas.Ddot(g, x) + Q.C
 
-	blasw.Dgemv(blas.Trans, 1, Q.A, x, 1, g)
+	goblas.Dgemv(blas.Trans, 1, Q.A, x, 1, g)
 
 	return val
 }

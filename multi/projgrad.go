@@ -2,7 +2,7 @@ package multi
 
 import (
 	"github.com/dane-unltd/opt/uni"
-	"github.com/gonum/blas/blasw"
+	"github.com/dane-unltd/goblas"
 	"time"
 )
 
@@ -34,22 +34,22 @@ func (sol ProjGrad) OptimizeFProj(o FdF, proj Projection, in *Solution, upd ...U
 	n := len(r.X)
 	s := 1.0 //initial step size
 
-	x := blasw.NewVector(r.X)
-	g := blasw.NewVector(r.Grad)
-	d := blasw.NewVector(make([]float64, n))
+	x := goblas.NewVector(r.X)
+	g := goblas.NewVector(r.Grad)
+	d := goblas.NewVector(make([]float64, n))
 
-	blasw.Dcopy(g, d)
-	blasw.Dscal(-1, d)
+	goblas.Dcopy(g, d)
+	goblas.Dscal(-1, d)
 
-	xTemp := blasw.NewVector(make([]float64, n))
+	xTemp := goblas.NewVector(make([]float64, n))
 
-	blasw.Dcopy(x, xTemp)
-	blasw.Daxpy(s/2, d, xTemp)
+	goblas.Dcopy(x, xTemp)
+	goblas.Daxpy(s/2, d, xTemp)
 	proj.Project(xTemp.Data)
-	blasw.Daxpy(-1, x, xTemp)
-	blasw.Dscal(2/s, xTemp)
+	goblas.Daxpy(-1, x, xTemp)
+	goblas.Dscal(2/s, xTemp)
 
-	gLin := -blasw.Ddot(xTemp, xTemp)
+	gLin := -goblas.Ddot(xTemp, xTemp)
 
 	lineFunc := NewLineFProj(obj, proj, r.X, d.Data)
 	lsInit := uni.NewSolution()
@@ -64,20 +64,20 @@ func (sol ProjGrad) OptimizeFProj(o FdF, proj Projection, in *Solution, upd ...U
 		}
 		s, r.Obj = lsRes.X, lsRes.Obj
 
-		blasw.Daxpy(s, d, x)
+		goblas.Daxpy(s, d, x)
 		proj.Project(r.X)
 
 		obj.DF(r.X, r.Grad)
-		blasw.Dcopy(g, d)
-		blasw.Dscal(-1, d)
+		goblas.Dcopy(g, d)
+		goblas.Dscal(-1, d)
 
-		blasw.Dcopy(x, xTemp)
-		blasw.Daxpy(s/2, d, xTemp)
+		goblas.Dcopy(x, xTemp)
+		goblas.Daxpy(s/2, d, xTemp)
 		proj.Project(xTemp.Data)
-		blasw.Daxpy(-1, x, xTemp)
-		blasw.Dscal(2/s, xTemp)
+		goblas.Daxpy(-1, x, xTemp)
+		goblas.Dscal(2/s, xTemp)
 
-		gLin = -blasw.Ddot(xTemp, xTemp)
+		gLin = -goblas.Ddot(xTemp, xTemp)
 	}
 	return r
 }

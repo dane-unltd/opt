@@ -6,7 +6,7 @@ import (
 
 type Problem struct {
 	C, B []float64
-	A    blasw.General
+	A    goblas.General
 }
 
 func NewStandard(c []float64, A General, b []float64) *Problem {

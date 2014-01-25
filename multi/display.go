@@ -2,7 +2,7 @@ package multi
 
 import (
 	"fmt"
-	"github.com/gonum/blas/blasw"
+	"github.com/dane-unltd/goblas"
 )
 
 type Display struct {
@@ -16,7 +16,7 @@ func NewDisplay(p int) *Display {
 func (dsp *Display) Update(r *Result) Status {
 	gradNorm := nan
 	if r.Grad != nil {
-		gradNorm = blasw.Dnrm2(blasw.NewVector(r.Grad))
+		gradNorm = goblas.Dnrm2(goblas.NewVector(r.Grad))
 	}
 	if r.Iter == 0 {
 		fmt.Println("------------------------------------------------------")

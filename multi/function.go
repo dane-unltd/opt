@@ -1,7 +1,7 @@
 package multi
 
 import (
-	"github.com/gonum/blas/blasw"
+	"github.com/dane-unltd/goblas"
 )
 
 type F interface {
@@ -26,7 +26,7 @@ type Projection interface {
 
 type LineF struct {
 	f           F
-	x, d, xTemp blasw.Vector
+	x, d, xTemp goblas.Vector
 	Dir         float64
 }
 
@@ -37,16 +37,16 @@ func NewLineF(f F, x, d []float64) *LineF {
 	}
 	return &LineF{
 		f:     f,
-		x:     blasw.NewVector(x),
-		d:     blasw.NewVector(d),
+		x:     goblas.NewVector(x),
+		d:     goblas.NewVector(d),
 		Dir:   1,
-		xTemp: blasw.NewVector(make([]float64, n)),
+		xTemp: goblas.NewVector(make([]float64, n)),
 	}
 }
 
 func (lf *LineF) F(alpha float64) float64 {
-	blasw.Dcopy(lf.x, lf.xTemp)
-	blasw.Daxpy(lf.Dir*alpha, lf.d, lf.xTemp)
+	goblas.Dcopy(lf.x, lf.xTemp)
+	goblas.Daxpy(lf.Dir*alpha, lf.d, lf.xTemp)
 	return lf.f.F(lf.xTemp.Data)
 }
 
@@ -60,7 +60,7 @@ func (lf *LineF) SwitchDir() {
 
 type LineFdF struct {
 	fdf            FdF
-	x, d, g, xTemp blasw.Vector
+	x, d, g, xTemp goblas.Vector
 }
 
 func NewLineFdF(fdf FdF, x, d []float64) *LineFdF {
@@ -70,39 +70,39 @@ func NewLineFdF(fdf FdF, x, d []float64) *LineFdF {
 	}
 	return &LineFdF{
 		fdf:   fdf,
-		x:     blasw.NewVector(x),
-		d:     blasw.NewVector(d),
-		g:     blasw.NewVector(make([]float64, n)),
-		xTemp: blasw.NewVector(make([]float64, n)),
+		x:     goblas.NewVector(x),
+		d:     goblas.NewVector(d),
+		g:     goblas.NewVector(make([]float64, n)),
+		xTemp: goblas.NewVector(make([]float64, n)),
 	}
 }
 
 func (lf *LineFdF) F(alpha float64) float64 {
-	blasw.Dcopy(lf.x, lf.xTemp)
-	blasw.Daxpy(alpha, lf.d, lf.xTemp)
+	goblas.Dcopy(lf.x, lf.xTemp)
+	goblas.Daxpy(alpha, lf.d, lf.xTemp)
 	return lf.fdf.F(lf.xTemp.Data)
 }
 
 func (lf *LineFdF) DF(alpha float64) float64 {
-	blasw.Dcopy(lf.x, lf.xTemp)
-	blasw.Daxpy(alpha, lf.d, lf.xTemp)
+	goblas.Dcopy(lf.x, lf.xTemp)
+	goblas.Daxpy(alpha, lf.d, lf.xTemp)
 	lf.fdf.DF(lf.xTemp.Data, lf.g.Data)
 
-	return blasw.Ddot(lf.d, lf.g)
+	return goblas.Ddot(lf.d, lf.g)
 }
 
 func (lf *LineFdF) FdF(alpha float64) (float64, float64) {
-	blasw.Dcopy(lf.x, lf.xTemp)
-	blasw.Daxpy(alpha, lf.d, lf.xTemp)
+	goblas.Dcopy(lf.x, lf.xTemp)
+	goblas.Daxpy(alpha, lf.d, lf.xTemp)
 	val := lf.fdf.FdF(lf.xTemp.Data, lf.g.Data)
 
-	return val, blasw.Ddot(lf.d, lf.g)
+	return val, goblas.Ddot(lf.d, lf.g)
 }
 
 type LineFProj struct {
 	f           F
 	p           Projection
-	x, d, xTemp blasw.Vector
+	x, d, xTemp goblas.Vector
 }
 
 func NewLineFProj(f F, p Projection, x, d []float64) *LineFProj {
@@ -113,15 +113,15 @@ func NewLineFProj(f F, p Projection, x, d []float64) *LineFProj {
 	return &LineFProj{
 		f:     f,
 		p:     p,
-		x:     blasw.NewVector(x),
-		d:     blasw.NewVector(d),
-		xTemp: blasw.NewVector(make([]float64, n)),
+		x:     goblas.NewVector(x),
+		d:     goblas.NewVector(d),
+		xTemp: goblas.NewVector(make([]float64, n)),
 	}
 }
 
 func (lf *LineFProj) F(alpha float64) float64 {
-	blasw.Dcopy(lf.x, lf.xTemp)
-	blasw.Daxpy(alpha, lf.d, lf.xTemp)
+	goblas.Dcopy(lf.x, lf.xTemp)
+	goblas.Daxpy(alpha, lf.d, lf.xTemp)
 	lf.p.Project(lf.xTemp.Data)
 	return lf.f.F(lf.xTemp.Data)
 }
