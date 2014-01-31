@@ -5,8 +5,8 @@ import (
 	"github.com/dane-unltd/opt"
 	"github.com/dane-unltd/opt/uni"
 	"github.com/gonum/blas"
-	"github.com/dane-unltd/goblas"
 	"github.com/gonum/blas/cblas"
+	"github.com/gonum/blas/dblas"
 	"math"
 	"math/rand"
 	"testing"
@@ -17,20 +17,19 @@ var cops struct {
 }
 
 func init() {
-	goblas.Register(cops)
-	goblas.SetOrder(blas.ColMajor)
+	dblas.Register(cops)
 }
 
 func TestExampleModel(t *testing.T) {
 	//badly conditioned Hessian leads to zig-zagging of the steepest descent
 	//algorithm
 	condNo := 100.0
-	optSol := goblas.NewVector([]float64{1, 2})
+	optSol := dblas.NewVector([]float64{1, 2})
 
-	A := goblas.NewGeneral(2, 2, []float64{condNo, 0, 0, 1})
-	b := goblas.NewVector([]float64{-2 * optSol.Data[0] * condNo,
+	A := dblas.NewGeneral(blas.ColMajor, 2, 2, []float64{condNo, 0, 0, 1})
+	b := dblas.NewVector([]float64{-2 * optSol.Data[0] * condNo,
 		-2 * optSol.Data[1]})
-	c := -0.5 * goblas.Ddot(b, optSol)
+	c := -0.5 * dblas.Ddot(b, optSol)
 
 	//define objective function
 	fun := opt.NewQuadratic(A, b.Data, c)
@@ -56,27 +55,27 @@ func TestExampleModel(t *testing.T) {
 }
 
 func TestQuadratic(t *testing.T) {
-	goblas.Register(cops)
+	dblas.Register(cops)
 
 	n := 5
 
-	xStar := goblas.NewVector(make([]float64, n))
+	xStar := dblas.NewVector(make([]float64, n))
 	for i := range xStar.Data {
 		xStar.Data[i] = 1
 	}
-	A := goblas.NewGeneral(n, n, make([]float64, n*n))
+	A := dblas.NewGeneral(blas.ColMajor, n, n, make([]float64, n*n))
 	for i := range A.Data {
 		A.Data[i] = rand.NormFloat64()
 	}
-	AtA := goblas.NewGeneral(n, n, make([]float64, n*n))
-	goblas.Dgemm(blas.Trans, blas.NoTrans, 1, A, A, 0, AtA)
+	AtA := dblas.NewGeneral(blas.ColMajor, n, n, make([]float64, n*n))
+	dblas.Dgemm(blas.Trans, blas.NoTrans, 1, A, A, 0, AtA)
 
-	bTmp := goblas.NewVector(make([]float64, n))
-	goblas.Dgemv(blas.NoTrans, 1, A, xStar, 0, bTmp)
-	b := goblas.NewVector(make([]float64, n))
-	goblas.Dgemv(blas.Trans, -2, A, bTmp, 0, b)
+	bTmp := dblas.NewVector(make([]float64, n))
+	dblas.Dgemv(blas.NoTrans, 1, A, xStar, 0, bTmp)
+	b := dblas.NewVector(make([]float64, n))
+	dblas.Dgemv(blas.Trans, -2, A, bTmp, 0, b)
 
-	c := goblas.Ddot(bTmp, bTmp)
+	c := dblas.Ddot(bTmp, bTmp)
 
 	//Define input arguments
 	obj := opt.NewQuadratic(AtA, b.Data, c)
@@ -122,7 +121,7 @@ func TestQuadratic(t *testing.T) {
 }
 
 func TestRosenbrock(t *testing.T) {
-	goblas.Register(cops)
+	dblas.Register(cops)
 
 	n := 10
 	scale := 10.0
@@ -188,7 +187,7 @@ func (r rosTest) F(x []float64) float64 {
 }
 
 func TestSolve(t *testing.T) {
-	goblas.Register(cops)
+	dblas.Register(cops)
 
 	n := 10
 	scale := 10.0

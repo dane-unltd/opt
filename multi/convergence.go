@@ -1,7 +1,7 @@
 package multi
 
 import (
-	"github.com/dane-unltd/goblas"
+	"github.com/gonum/blas/dblas"
 )
 
 type DeltaXConv struct {
@@ -21,8 +21,8 @@ func (dx *DeltaXConv) Update(r *Result) Status {
 		return NotTerminated
 	}
 	copy(dx.tmp, r.X)
-	goblas.Daxpy(-1, goblas.NewVector(dx.oldX), goblas.NewVector(dx.tmp))
-	if goblas.Dnrm2(goblas.NewVector(dx.tmp)) < dx.Tol {
+	dblas.Daxpy(-1, dblas.NewVector(dx.oldX), dblas.NewVector(dx.tmp))
+	if dblas.Dnrm2(dblas.NewVector(dx.tmp)) < dx.Tol {
 		return XAbsConv
 	}
 	copy(dx.oldX, r.X)
@@ -34,7 +34,7 @@ type GradConv struct {
 }
 
 func (gc GradConv) Update(r *Result) Status {
-	if goblas.Dnrm2(goblas.NewVector(r.Grad)) < gc.Tol {
+	if dblas.Dnrm2(dblas.NewVector(r.Grad)) < gc.Tol {
 		return GradAbsConv
 	}
 	return NotTerminated

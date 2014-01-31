@@ -1,61 +1,61 @@
 package opt
 
 import (
-	"github.com/dane-unltd/goblas"
 	"github.com/gonum/blas"
+	"github.com/gonum/blas/dblas"
 	"math"
 )
 
 //objective of the form x'*A*x + b'*x + c
 type Quadratic struct {
-	A goblas.General
-	B goblas.Vector
+	A dblas.General
+	B dblas.Vector
 	C float64
 
-	temp goblas.Vector
+	temp dblas.Vector
 }
 
-func NewQuadratic(A goblas.General, b []float64, c float64) *Quadratic {
-	if A.M != A.N {
+func NewQuadratic(A dblas.General, b []float64, c float64) *Quadratic {
+	if A.Rows != A.Cols {
 		panic("matrix has to be quadratic")
 	}
-	if A.N != len(b) {
+	if A.Cols != len(b) {
 		panic("dimension mismatch between A and b")
 	}
 	return &Quadratic{
 		A:    A,
-		B:    goblas.NewVector(b),
+		B:    dblas.NewVector(b),
 		C:    c,
-		temp: goblas.NewVector(make([]float64, A.N)),
+		temp: dblas.NewVector(make([]float64, A.Cols)),
 	}
 }
 
 func (Q *Quadratic) F(xs []float64) float64 {
-	x := goblas.NewVector(xs)
-	goblas.Dcopy(Q.B, Q.temp)
-	goblas.Dgemv(blas.NoTrans, 1, Q.A, x, 1, Q.temp)
-	return goblas.Ddot(x, Q.temp) + Q.C
+	x := dblas.NewVector(xs)
+	dblas.Dcopy(Q.B, Q.temp)
+	dblas.Dgemv(blas.NoTrans, 1, Q.A, x, 1, Q.temp)
+	return dblas.Ddot(x, Q.temp) + Q.C
 }
 
 func (Q *Quadratic) DF(xs, gs []float64) {
-	x := goblas.NewVector(xs)
-	g := goblas.NewVector(gs)
+	x := dblas.NewVector(xs)
+	g := dblas.NewVector(gs)
 
-	goblas.Dcopy(Q.B, g)
-	goblas.Dgemv(blas.NoTrans, 1, Q.A, x, 1, g)
-	goblas.Dgemv(blas.Trans, 1, Q.A, x, 1, g)
+	dblas.Dcopy(Q.B, g)
+	dblas.Dgemv(blas.NoTrans, 1, Q.A, x, 1, g)
+	dblas.Dgemv(blas.Trans, 1, Q.A, x, 1, g)
 }
 
 func (Q *Quadratic) FdF(xs, gs []float64) float64 {
-	x := goblas.NewVector(xs)
-	g := goblas.NewVector(gs)
+	x := dblas.NewVector(xs)
+	g := dblas.NewVector(gs)
 
-	goblas.Dcopy(Q.B, g)
-	goblas.Dgemv(blas.NoTrans, 1, Q.A, x, 1, g)
+	dblas.Dcopy(Q.B, g)
+	dblas.Dgemv(blas.NoTrans, 1, Q.A, x, 1, g)
 
-	val := goblas.Ddot(g, x) + Q.C
+	val := dblas.Ddot(g, x) + Q.C
 
-	goblas.Dgemv(blas.Trans, 1, Q.A, x, 1, g)
+	dblas.Dgemv(blas.Trans, 1, Q.A, x, 1, g)
 
 	return val
 }

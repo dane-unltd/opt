@@ -2,7 +2,7 @@ package multi
 
 import (
 	"github.com/dane-unltd/opt/uni"
-	"github.com/dane-unltd/goblas"
+	"github.com/gonum/blas/dblas"
 	"time"
 )
 
@@ -34,14 +34,14 @@ func (sol SteepestDescent) OptimizeFdF(o FdF, in *Solution, upd ...Updater) *Res
 	n := len(r.X)
 	s := 1.0 //initial step size
 
-	x := goblas.NewVector(r.X)
-	g := goblas.NewVector(r.Grad)
-	d := goblas.NewVector(make([]float64, n))
+	x := dblas.NewVector(r.X)
+	g := dblas.NewVector(r.Grad)
+	d := dblas.NewVector(make([]float64, n))
 
-	gLin := -goblas.Ddot(g, g)
+	gLin := -dblas.Ddot(g, g)
 
-	goblas.Dcopy(g, d)
-	goblas.Dscal(-1, d)
+	dblas.Dcopy(g, d)
+	dblas.Dscal(-1, d)
 
 	lineFunc := NewLineFdF(obj, r.X, d.Data)
 	lsInit := uni.NewSolution()
@@ -66,13 +66,13 @@ func (sol SteepestDescent) OptimizeFdF(o FdF, in *Solution, upd ...Updater) *Res
 		}
 		s, r.Obj = lsRes.X, lsRes.Obj
 
-		goblas.Daxpy(s, d, x)
+		dblas.Daxpy(s, d, x)
 
 		obj.DF(r.X, r.Grad)
-		goblas.Dcopy(g, d)
-		goblas.Dscal(-1, d)
+		dblas.Dcopy(g, d)
+		dblas.Dscal(-1, d)
 
-		gLin = -goblas.Ddot(d, d)
+		gLin = -dblas.Ddot(d, d)
 	}
 	return r
 }
