@@ -45,8 +45,8 @@ func NewLineF(f F, x, d []float64) *LineF {
 }
 
 func (lf *LineF) F(alpha float64) float64 {
-	dblas.Dcopy(lf.x, lf.xTemp)
-	dblas.Daxpy(lf.Dir*alpha, lf.d, lf.xTemp)
+	dblas.Copy(lf.x, lf.xTemp)
+	dblas.Axpy(lf.Dir*alpha, lf.d, lf.xTemp)
 	return lf.f.F(lf.xTemp.Data)
 }
 
@@ -78,25 +78,25 @@ func NewLineFdF(fdf FdF, x, d []float64) *LineFdF {
 }
 
 func (lf *LineFdF) F(alpha float64) float64 {
-	dblas.Dcopy(lf.x, lf.xTemp)
-	dblas.Daxpy(alpha, lf.d, lf.xTemp)
+	dblas.Copy(lf.x, lf.xTemp)
+	dblas.Axpy(alpha, lf.d, lf.xTemp)
 	return lf.fdf.F(lf.xTemp.Data)
 }
 
 func (lf *LineFdF) DF(alpha float64) float64 {
-	dblas.Dcopy(lf.x, lf.xTemp)
-	dblas.Daxpy(alpha, lf.d, lf.xTemp)
+	dblas.Copy(lf.x, lf.xTemp)
+	dblas.Axpy(alpha, lf.d, lf.xTemp)
 	lf.fdf.DF(lf.xTemp.Data, lf.g.Data)
 
-	return dblas.Ddot(lf.d, lf.g)
+	return dblas.Dot(lf.d, lf.g)
 }
 
 func (lf *LineFdF) FdF(alpha float64) (float64, float64) {
-	dblas.Dcopy(lf.x, lf.xTemp)
-	dblas.Daxpy(alpha, lf.d, lf.xTemp)
+	dblas.Copy(lf.x, lf.xTemp)
+	dblas.Axpy(alpha, lf.d, lf.xTemp)
 	val := lf.fdf.FdF(lf.xTemp.Data, lf.g.Data)
 
-	return val, dblas.Ddot(lf.d, lf.g)
+	return val, dblas.Dot(lf.d, lf.g)
 }
 
 type LineFProj struct {
@@ -120,8 +120,8 @@ func NewLineFProj(f F, p Projection, x, d []float64) *LineFProj {
 }
 
 func (lf *LineFProj) F(alpha float64) float64 {
-	dblas.Dcopy(lf.x, lf.xTemp)
-	dblas.Daxpy(alpha, lf.d, lf.xTemp)
+	dblas.Copy(lf.x, lf.xTemp)
+	dblas.Axpy(alpha, lf.d, lf.xTemp)
 	lf.p.Project(lf.xTemp.Data)
 	return lf.f.F(lf.xTemp.Data)
 }

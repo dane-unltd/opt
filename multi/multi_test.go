@@ -29,7 +29,7 @@ func TestExampleModel(t *testing.T) {
 	A := dblas.NewGeneral(blas.ColMajor, 2, 2, []float64{condNo, 0, 0, 1})
 	b := dblas.NewVector([]float64{-2 * optSol.Data[0] * condNo,
 		-2 * optSol.Data[1]})
-	c := -0.5 * dblas.Ddot(b, optSol)
+	c := -0.5 * dblas.Dot(b, optSol)
 
 	//define objective function
 	fun := opt.NewQuadratic(A, b.Data, c)
@@ -68,14 +68,14 @@ func TestQuadratic(t *testing.T) {
 		A.Data[i] = rand.NormFloat64()
 	}
 	AtA := dblas.NewGeneral(blas.ColMajor, n, n, make([]float64, n*n))
-	dblas.Dgemm(blas.Trans, blas.NoTrans, 1, A, A, 0, AtA)
+	dblas.Gemm(blas.Trans, blas.NoTrans, 1, A, A, 0, AtA)
 
 	bTmp := dblas.NewVector(make([]float64, n))
-	dblas.Dgemv(blas.NoTrans, 1, A, xStar, 0, bTmp)
+	A.MatVec(blas.NoTrans, 1, xStar, 0, bTmp)
 	b := dblas.NewVector(make([]float64, n))
-	dblas.Dgemv(blas.Trans, -2, A, bTmp, 0, b)
+	A.MatVec(blas.Trans, -2, bTmp, 0, b)
 
-	c := dblas.Ddot(bTmp, bTmp)
+	c := dblas.Dot(bTmp, bTmp)
 
 	//Define input arguments
 	obj := opt.NewQuadratic(AtA, b.Data, c)

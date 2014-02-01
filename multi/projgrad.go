@@ -38,18 +38,18 @@ func (sol ProjGrad) OptimizeFProj(o FdF, proj Projection, in *Solution, upd ...U
 	g := dblas.NewVector(r.Grad)
 	d := dblas.NewVector(make([]float64, n))
 
-	dblas.Dcopy(g, d)
-	dblas.Dscal(-1, d)
+	dblas.Copy(g, d)
+	dblas.Scal(-1, d)
 
 	xTemp := dblas.NewVector(make([]float64, n))
 
-	dblas.Dcopy(x, xTemp)
-	dblas.Daxpy(s/2, d, xTemp)
+	dblas.Copy(x, xTemp)
+	dblas.Axpy(s/2, d, xTemp)
 	proj.Project(xTemp.Data)
-	dblas.Daxpy(-1, x, xTemp)
-	dblas.Dscal(2/s, xTemp)
+	dblas.Axpy(-1, x, xTemp)
+	dblas.Scal(2/s, xTemp)
 
-	gLin := -dblas.Ddot(xTemp, xTemp)
+	gLin := -dblas.Dot(xTemp, xTemp)
 
 	lineFunc := NewLineFProj(obj, proj, r.X, d.Data)
 	lsInit := uni.NewSolution()
@@ -64,20 +64,20 @@ func (sol ProjGrad) OptimizeFProj(o FdF, proj Projection, in *Solution, upd ...U
 		}
 		s, r.Obj = lsRes.X, lsRes.Obj
 
-		dblas.Daxpy(s, d, x)
+		dblas.Axpy(s, d, x)
 		proj.Project(r.X)
 
 		obj.DF(r.X, r.Grad)
-		dblas.Dcopy(g, d)
-		dblas.Dscal(-1, d)
+		dblas.Copy(g, d)
+		dblas.Scal(-1, d)
 
-		dblas.Dcopy(x, xTemp)
-		dblas.Daxpy(s/2, d, xTemp)
+		dblas.Copy(x, xTemp)
+		dblas.Axpy(s/2, d, xTemp)
 		proj.Project(xTemp.Data)
-		dblas.Daxpy(-1, x, xTemp)
-		dblas.Dscal(2/s, xTemp)
+		dblas.Axpy(-1, x, xTemp)
+		dblas.Scal(2/s, xTemp)
 
-		gLin = -dblas.Ddot(xTemp, xTemp)
+		gLin = -dblas.Dot(xTemp, xTemp)
 	}
 	return r
 }

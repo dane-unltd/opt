@@ -62,38 +62,38 @@ func (sol LBFGS) OptimizeFdF(o FdF, in *Solution, upd ...Updater) *Result {
 
 	notFirst := false
 	for doUpdates(r, initialTime, upd) == 0 {
-		dblas.Dcopy(g, d)
+		dblas.Copy(g, d)
 		if notFirst {
-			dblas.Dcopy(g, yNew)
-			dblas.Daxpy(-1, gOld, yNew)
-			dblas.Dcopy(x, sNew)
-			dblas.Daxpy(-1, xOld, sNew)
+			dblas.Copy(g, yNew)
+			dblas.Axpy(-1, gOld, yNew)
+			dblas.Copy(x, sNew)
+			dblas.Axpy(-1, xOld, sNew)
 
 			temp := S[len(S)-1]
 			copy(S[1:], S)
 			S[0] = temp
-			dblas.Dcopy(sNew, S[0])
+			dblas.Copy(sNew, S[0])
 
 			temp = Y[len(S)-1]
 			copy(Y[1:], Y)
 			Y[0] = temp
-			dblas.Dcopy(yNew, Y[0])
+			dblas.Copy(yNew, Y[0])
 
 			copy(rhos[1:], rhos)
-			rhos[0] = 1 / dblas.Ddot(sNew, yNew)
+			rhos[0] = 1 / dblas.Dot(sNew, yNew)
 			for i := 0; i < sol.Mem; i++ {
-				alphas[i] = rhos[i] * dblas.Ddot(S[i], d)
-				dblas.Daxpy(-alphas[i], Y[i], d)
+				alphas[i] = rhos[i] * dblas.Dot(S[i], d)
+				dblas.Axpy(-alphas[i], Y[i], d)
 			}
 			for i := sol.Mem - 1; i >= 0; i-- {
-				betas[i] = rhos[i] * dblas.Ddot(Y[i], d)
-				dblas.Daxpy(alphas[i]-betas[i], S[i], d)
+				betas[i] = rhos[i] * dblas.Dot(Y[i], d)
+				dblas.Axpy(alphas[i]-betas[i], S[i], d)
 			}
 		}
 		notFirst = true
 
-		dblas.Dscal(-1, d)
-		gLin = dblas.Ddot(d, g)
+		dblas.Scal(-1, d)
+		gLin = dblas.Dot(d, g)
 
 		wolfe := uni.Wolfe{
 			Armijo:    0.2,
@@ -108,9 +108,9 @@ func (sol LBFGS) OptimizeFdF(o FdF, in *Solution, upd ...Updater) *Result {
 		lsRes := sol.LineSearch.OptimizeFdF(lineFunc, lsInit, wolfe)
 		if lsRes.Status < 0 {
 			fmt.Println("Linesearch:", lsRes.Status)
-			dblas.Dcopy(g, d)
-			dblas.Dscal(-1, d)
-			lsInit.SetLower(0, r.Obj, dblas.Dnrm2(g))
+			dblas.Copy(g, d)
+			dblas.Scal(-1, d)
+			lsInit.SetLower(0, r.Obj, dblas.Nrm2(g))
 			lsRes = sol.LineSearch.OptimizeFdF(lineFunc, lsInit, wolfe)
 			if lsRes.Status < 0 {
 				fmt.Println("Linesearch:", lsRes.Status)
@@ -122,10 +122,10 @@ func (sol LBFGS) OptimizeFdF(o FdF, in *Solution, upd ...Updater) *Result {
 		stepSize := lsRes.X
 		r.Obj = lsRes.Obj
 
-		dblas.Dcopy(x, xOld)
-		dblas.Dcopy(g, gOld)
+		dblas.Copy(x, xOld)
+		dblas.Copy(g, gOld)
 
-		dblas.Daxpy(stepSize, d, x)
+		dblas.Axpy(stepSize, d, x)
 		obj.DF(r.X, r.Grad)
 	}
 	return r

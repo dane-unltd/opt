@@ -32,30 +32,30 @@ func NewQuadratic(A dblas.General, b []float64, c float64) *Quadratic {
 
 func (Q *Quadratic) F(xs []float64) float64 {
 	x := dblas.NewVector(xs)
-	dblas.Dcopy(Q.B, Q.temp)
-	dblas.Dgemv(blas.NoTrans, 1, Q.A, x, 1, Q.temp)
-	return dblas.Ddot(x, Q.temp) + Q.C
+	dblas.Copy(Q.B, Q.temp)
+	Q.A.MatVec(blas.NoTrans, 1, x, 1, Q.temp)
+	return dblas.Dot(x, Q.temp) + Q.C
 }
 
 func (Q *Quadratic) DF(xs, gs []float64) {
 	x := dblas.NewVector(xs)
 	g := dblas.NewVector(gs)
 
-	dblas.Dcopy(Q.B, g)
-	dblas.Dgemv(blas.NoTrans, 1, Q.A, x, 1, g)
-	dblas.Dgemv(blas.Trans, 1, Q.A, x, 1, g)
+	dblas.Copy(Q.B, g)
+	Q.A.MatVec(blas.NoTrans, 1, x, 1, g)
+	Q.A.MatVec(blas.Trans, 1, x, 1, g)
 }
 
 func (Q *Quadratic) FdF(xs, gs []float64) float64 {
 	x := dblas.NewVector(xs)
 	g := dblas.NewVector(gs)
 
-	dblas.Dcopy(Q.B, g)
-	dblas.Dgemv(blas.NoTrans, 1, Q.A, x, 1, g)
+	dblas.Copy(Q.B, g)
+	Q.A.MatVec(blas.NoTrans, 1, x, 1, g)
 
-	val := dblas.Ddot(g, x) + Q.C
+	val := dblas.Dot(g, x) + Q.C
 
-	dblas.Dgemv(blas.Trans, 1, Q.A, x, 1, g)
+	Q.A.MatVec(blas.Trans, 1, x, 1, g)
 
 	return val
 }

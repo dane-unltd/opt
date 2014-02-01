@@ -16,7 +16,7 @@ func NewDisplay(p int) *Display {
 func (dsp *Display) Update(r *Result) Status {
 	gradNorm := nan
 	if r.Grad != nil {
-		gradNorm = dblas.Dnrm2(dblas.NewVector(r.Grad))
+		gradNorm = dblas.Nrm2(dblas.NewVector(r.Grad))
 	}
 	if r.Iter == 0 {
 		fmt.Println("------------------------------------------------------")
