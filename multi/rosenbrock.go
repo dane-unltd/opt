@@ -2,7 +2,7 @@ package multi
 
 import (
 	"github.com/dane-unltd/opt/uni"
-	"github.com/gonum/blas/dblas"
+	"github.com/gonum/blas/dbw"
 	"math"
 	"time"
 )
@@ -38,11 +38,11 @@ func (sol *Rosenbrock) OptimizeF(o F, in *Solution, upd ...Updater) *Result {
 
 	eps := 1.0
 	n := len(r.X)
-	x := dblas.NewVector(r.X)
+	x := dbw.NewVector(r.X)
 
-	d := make([]dblas.Vector, n)
+	d := make([]dbw.Vector, n)
 	for i := range d {
-		d[i] = dblas.NewVector(make([]float64, n))
+		d[i] = dbw.NewVector(make([]float64, n))
 		d[i].Data[i] = 1
 	}
 
@@ -86,25 +86,25 @@ func (sol *Rosenbrock) OptimizeF(o F, in *Solution, upd ...Updater) *Result {
 
 			lambda[i] = lf[i].Dir * lsRes.X
 
-			dblas.Axpy(lambda[i], d[i], x)
+			dbw.Axpy(lambda[i], d[i], x)
 			r.Obj = lsRes.Obj
 		}
 
 		//Find new directions
 		for i := range d {
 			if math.Abs(lambda[i]) > sol.Accuracy {
-				dblas.Scal(lambda[i], d[i])
+				dbw.Scal(lambda[i], d[i])
 				for j := i + 1; j < n; j++ {
-					dblas.Axpy(lambda[j], d[j], d[i])
+					dbw.Axpy(lambda[j], d[j], d[i])
 				}
 			}
 		}
 
 		//Gram-Schmidt, TODO:use QR factorization
 		for i := range d {
-			dblas.Scal(1/dblas.Nrm2(d[i]), d[i])
+			dbw.Scal(1/dbw.Nrm2(d[i]), d[i])
 			for j := i + 1; j < n; j++ {
-				dblas.Axpy(-dblas.Dot(d[i], d[j]), d[i], d[j])
+				dbw.Axpy(-dbw.Dot(d[i], d[j]), d[i], d[j])
 			}
 		}
 

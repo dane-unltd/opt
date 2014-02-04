@@ -38,7 +38,7 @@ func OptimizeFdF(obj FdF, in *Solution, p *Params, u ...Updater) *Result {
 	return solver.OptimizeFdF(obj, in, u...)
 }
 
-//Solve a constrained problem using a gradient and projection based method.
+//Solve a constrained problem using a gradient and projection based methodbw.
 func OptimizeFProj(obj FdF, pr Projection, in *Solution, p *Params, u ...Updater) *Result {
 	solver := NewProjGrad()
 	if p != nil {

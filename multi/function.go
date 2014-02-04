@@ -1,7 +1,7 @@
 package multi
 
 import (
-	"github.com/gonum/blas/dblas"
+	"github.com/gonum/blas/dbw"
 )
 
 type F interface {
@@ -26,7 +26,7 @@ type Projection interface {
 
 type LineF struct {
 	f           F
-	x, d, xTemp dblas.Vector
+	x, d, xTemp dbw.Vector
 	Dir         float64
 }
 
@@ -37,16 +37,16 @@ func NewLineF(f F, x, d []float64) *LineF {
 	}
 	return &LineF{
 		f:     f,
-		x:     dblas.NewVector(x),
-		d:     dblas.NewVector(d),
+		x:     dbw.NewVector(x),
+		d:     dbw.NewVector(d),
 		Dir:   1,
-		xTemp: dblas.NewVector(make([]float64, n)),
+		xTemp: dbw.NewVector(make([]float64, n)),
 	}
 }
 
 func (lf *LineF) F(alpha float64) float64 {
-	dblas.Copy(lf.x, lf.xTemp)
-	dblas.Axpy(lf.Dir*alpha, lf.d, lf.xTemp)
+	dbw.Copy(lf.x, lf.xTemp)
+	dbw.Axpy(lf.Dir*alpha, lf.d, lf.xTemp)
 	return lf.f.F(lf.xTemp.Data)
 }
 
@@ -60,7 +60,7 @@ func (lf *LineF) SwitchDir() {
 
 type LineFdF struct {
 	fdf            FdF
-	x, d, g, xTemp dblas.Vector
+	x, d, g, xTemp dbw.Vector
 }
 
 func NewLineFdF(fdf FdF, x, d []float64) *LineFdF {
@@ -70,39 +70,39 @@ func NewLineFdF(fdf FdF, x, d []float64) *LineFdF {
 	}
 	return &LineFdF{
 		fdf:   fdf,
-		x:     dblas.NewVector(x),
-		d:     dblas.NewVector(d),
-		g:     dblas.NewVector(make([]float64, n)),
-		xTemp: dblas.NewVector(make([]float64, n)),
+		x:     dbw.NewVector(x),
+		d:     dbw.NewVector(d),
+		g:     dbw.NewVector(make([]float64, n)),
+		xTemp: dbw.NewVector(make([]float64, n)),
 	}
 }
 
 func (lf *LineFdF) F(alpha float64) float64 {
-	dblas.Copy(lf.x, lf.xTemp)
-	dblas.Axpy(alpha, lf.d, lf.xTemp)
+	dbw.Copy(lf.x, lf.xTemp)
+	dbw.Axpy(alpha, lf.d, lf.xTemp)
 	return lf.fdf.F(lf.xTemp.Data)
 }
 
 func (lf *LineFdF) DF(alpha float64) float64 {
-	dblas.Copy(lf.x, lf.xTemp)
-	dblas.Axpy(alpha, lf.d, lf.xTemp)
+	dbw.Copy(lf.x, lf.xTemp)
+	dbw.Axpy(alpha, lf.d, lf.xTemp)
 	lf.fdf.DF(lf.xTemp.Data, lf.g.Data)
 
-	return dblas.Dot(lf.d, lf.g)
+	return dbw.Dot(lf.d, lf.g)
 }
 
 func (lf *LineFdF) FdF(alpha float64) (float64, float64) {
-	dblas.Copy(lf.x, lf.xTemp)
-	dblas.Axpy(alpha, lf.d, lf.xTemp)
+	dbw.Copy(lf.x, lf.xTemp)
+	dbw.Axpy(alpha, lf.d, lf.xTemp)
 	val := lf.fdf.FdF(lf.xTemp.Data, lf.g.Data)
 
-	return val, dblas.Dot(lf.d, lf.g)
+	return val, dbw.Dot(lf.d, lf.g)
 }
 
 type LineFProj struct {
 	f           F
 	p           Projection
-	x, d, xTemp dblas.Vector
+	x, d, xTemp dbw.Vector
 }
 
 func NewLineFProj(f F, p Projection, x, d []float64) *LineFProj {
@@ -113,15 +113,15 @@ func NewLineFProj(f F, p Projection, x, d []float64) *LineFProj {
 	return &LineFProj{
 		f:     f,
 		p:     p,
-		x:     dblas.NewVector(x),
-		d:     dblas.NewVector(d),
-		xTemp: dblas.NewVector(make([]float64, n)),
+		x:     dbw.NewVector(x),
+		d:     dbw.NewVector(d),
+		xTemp: dbw.NewVector(make([]float64, n)),
 	}
 }
 
 func (lf *LineFProj) F(alpha float64) float64 {
-	dblas.Copy(lf.x, lf.xTemp)
-	dblas.Axpy(alpha, lf.d, lf.xTemp)
+	dbw.Copy(lf.x, lf.xTemp)
+	dbw.Axpy(alpha, lf.d, lf.xTemp)
 	lf.p.Project(lf.xTemp.Data)
 	return lf.f.F(lf.xTemp.Data)
 }

@@ -2,20 +2,20 @@ package opt
 
 import (
 	"github.com/gonum/blas"
-	"github.com/gonum/blas/dblas"
+	"github.com/gonum/blas/dbw"
 	"math"
 )
 
 //objective of the form x'*A*x + b'*x + c
 type Quadratic struct {
-	A dblas.General
-	B dblas.Vector
+	A dbw.General
+	B dbw.Vector
 	C float64
 
-	temp dblas.Vector
+	temp dbw.Vector
 }
 
-func NewQuadratic(A dblas.General, b []float64, c float64) *Quadratic {
+func NewQuadratic(A dbw.General, b []float64, c float64) *Quadratic {
 	if A.Rows != A.Cols {
 		panic("matrix has to be quadratic")
 	}
@@ -24,38 +24,38 @@ func NewQuadratic(A dblas.General, b []float64, c float64) *Quadratic {
 	}
 	return &Quadratic{
 		A:    A,
-		B:    dblas.NewVector(b),
+		B:    dbw.NewVector(b),
 		C:    c,
-		temp: dblas.NewVector(make([]float64, A.Cols)),
+		temp: dbw.NewVector(make([]float64, A.Cols)),
 	}
 }
 
 func (Q *Quadratic) F(xs []float64) float64 {
-	x := dblas.NewVector(xs)
-	dblas.Copy(Q.B, Q.temp)
-	Q.A.MatVec(blas.NoTrans, 1, x, 1, Q.temp)
-	return dblas.Dot(x, Q.temp) + Q.C
+	x := dbw.NewVector(xs)
+	dbw.Copy(Q.B, Q.temp)
+	dbw.Gemv(blas.NoTrans, 1, Q.A, x, 1, Q.temp)
+	return dbw.Dot(x, Q.temp) + Q.C
 }
 
 func (Q *Quadratic) DF(xs, gs []float64) {
-	x := dblas.NewVector(xs)
-	g := dblas.NewVector(gs)
+	x := dbw.NewVector(xs)
+	g := dbw.NewVector(gs)
 
-	dblas.Copy(Q.B, g)
-	Q.A.MatVec(blas.NoTrans, 1, x, 1, g)
-	Q.A.MatVec(blas.Trans, 1, x, 1, g)
+	dbw.Copy(Q.B, g)
+	dbw.Gemv(blas.NoTrans, 1, Q.A, x, 1, g)
+	dbw.Gemv(blas.Trans, 1, Q.A, x, 1, g)
 }
 
 func (Q *Quadratic) FdF(xs, gs []float64) float64 {
-	x := dblas.NewVector(xs)
-	g := dblas.NewVector(gs)
+	x := dbw.NewVector(xs)
+	g := dbw.NewVector(gs)
 
-	dblas.Copy(Q.B, g)
-	Q.A.MatVec(blas.NoTrans, 1, x, 1, g)
+	dbw.Copy(Q.B, g)
+	dbw.Gemv(blas.NoTrans, 1, Q.A, x, 1, g)
 
-	val := dblas.Dot(g, x) + Q.C
+	val := dbw.Dot(g, x) + Q.C
 
-	Q.A.MatVec(blas.Trans, 1, x, 1, g)
+	dbw.Gemv(blas.Trans, 1, Q.A, x, 1, g)
 
 	return val
 }

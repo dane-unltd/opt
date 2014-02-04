@@ -6,7 +6,7 @@ import (
 	"github.com/dane-unltd/opt/uni"
 	"github.com/gonum/blas"
 	"github.com/gonum/blas/cblas"
-	"github.com/gonum/blas/dblas"
+	"github.com/gonum/blas/dbw"
 	"math"
 	"math/rand"
 	"testing"
@@ -17,19 +17,19 @@ var cops struct {
 }
 
 func init() {
-	dblas.Register(cops)
+	dbw.Register(cops)
 }
 
 func TestExampleModel(t *testing.T) {
 	//badly conditioned Hessian leads to zig-zagging of the steepest descent
 	//algorithm
 	condNo := 100.0
-	optSol := dblas.NewVector([]float64{1, 2})
+	optSol := dbw.NewVector([]float64{1, 2})
 
-	A := dblas.NewGeneral(blas.ColMajor, 2, 2, []float64{condNo, 0, 0, 1})
-	b := dblas.NewVector([]float64{-2 * optSol.Data[0] * condNo,
+	A := dbw.NewGeneral(blas.ColMajor, 2, 2, []float64{condNo, 0, 0, 1})
+	b := dbw.NewVector([]float64{-2 * optSol.Data[0] * condNo,
 		-2 * optSol.Data[1]})
-	c := -0.5 * dblas.Dot(b, optSol)
+	c := -0.5 * dbw.Dot(b, optSol)
 
 	//define objective function
 	fun := opt.NewQuadratic(A, b.Data, c)
@@ -55,27 +55,27 @@ func TestExampleModel(t *testing.T) {
 }
 
 func TestQuadratic(t *testing.T) {
-	dblas.Register(cops)
+	dbw.Register(cops)
 
 	n := 5
 
-	xStar := dblas.NewVector(make([]float64, n))
+	xStar := dbw.NewVector(make([]float64, n))
 	for i := range xStar.Data {
 		xStar.Data[i] = 1
 	}
-	A := dblas.NewGeneral(blas.ColMajor, n, n, make([]float64, n*n))
+	A := dbw.NewGeneral(blas.ColMajor, n, n, make([]float64, n*n))
 	for i := range A.Data {
-		A.Data[i] = rand.NormFloat64()
+		A.Data[i] = randbw.NormFloat64()
 	}
-	AtA := dblas.NewGeneral(blas.ColMajor, n, n, make([]float64, n*n))
-	dblas.Gemm(blas.Trans, blas.NoTrans, 1, A, A, 0, AtA)
+	AtA := dbw.NewGeneral(blas.ColMajor, n, n, make([]float64, n*n))
+	dbw.Gemm(blas.Trans, blas.NoTrans, 1, A, A, 0, AtA)
 
-	bTmp := dblas.NewVector(make([]float64, n))
+	bTmp := dbw.NewVector(make([]float64, n))
 	A.MatVec(blas.NoTrans, 1, xStar, 0, bTmp)
-	b := dblas.NewVector(make([]float64, n))
+	b := dbw.NewVector(make([]float64, n))
 	A.MatVec(blas.Trans, -2, bTmp, 0, b)
 
-	c := dblas.Dot(bTmp, bTmp)
+	c := dbw.Dot(bTmp, bTmp)
 
 	//Define input arguments
 	obj := opt.NewQuadratic(AtA, b.Data, c)
@@ -102,7 +102,7 @@ func TestQuadratic(t *testing.T) {
 	//constrained problems (constraints described as projection)
 	projGrad := NewProjGrad()
 
-	res4 := projGrad.OptimizeFProj(obj, opt.RealPlus{}, sol, NewDeltaXConv(1e-6), NewDisplay(100))
+	res4 := projGradbw.OptimizeFProj(obj, opt.RealPlus{}, sol, NewDeltaXConv(1e-6), NewDisplay(100))
 
 	t.Log(res4.Obj, res4.FunEvals, res4.GradEvals, res4.Status)
 
@@ -121,14 +121,14 @@ func TestQuadratic(t *testing.T) {
 }
 
 func TestRosenbrock(t *testing.T) {
-	dblas.Register(cops)
+	dbw.Register(cops)
 
 	n := 10
 	scale := 10.0
 
 	xInit := make([]float64, n)
 	for i := range xInit {
-		xInit[i] = scale * rand.Float64()
+		xInit[i] = scale * randbw.Float64()
 	}
 
 	//Define input arguments
@@ -187,14 +187,14 @@ func (r rosTest) F(x []float64) float64 {
 }
 
 func TestSolve(t *testing.T) {
-	dblas.Register(cops)
+	dbw.Register(cops)
 
 	n := 10
 	scale := 10.0
 
 	xInit := make([]float64, n)
 	for i := range xInit {
-		xInit[i] = scale * rand.Float64()
+		xInit[i] = scale * randbw.Float64()
 	}
 	sol := NewSolution(xInit)
 
