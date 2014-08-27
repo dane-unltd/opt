@@ -47,6 +47,8 @@ func (sol *LBFGS) SearchDirection(s Solution, dSl []float64) {
 	g := dbw.NewVector(s.Grad)
 	x := dbw.NewVector(s.X)
 
+	dbw.Copy(g, d)
+
 	if sol.notFirst {
 		dbw.Copy(g, sol.yNew)
 		dbw.Axpy(-1, sol.gOld, sol.yNew)

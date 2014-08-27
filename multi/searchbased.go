@@ -40,12 +40,9 @@ func (sol SearchBased) OptimizeFdF(o FdF, in *Solution, upd ...Updater) *Result 
 	g := dbw.NewVector(r.Grad)
 	d := dbw.NewVector(make([]float64, n))
 
-	gLin := dbw.Dot(g, d)
-
 	sol.sd.SearchDirection(r.Solution, d.Data)
 
-	lineFunc := NewLineFdF(obj, r.X, d.Data)
-	lsInit := uni.NewSolution()
+	gLin := dbw.Dot(g, d)
 
 	for doUpdates(r, initialTime, upd) == 0 {
 		wolfe := uni.Wolfe{
@@ -56,6 +53,8 @@ func (sol SearchBased) OptimizeFdF(o FdF, in *Solution, upd ...Updater) *Result 
 			Deriv0:    gLin,
 		}
 
+		lineFunc := NewLineFdF(obj, r.X, d.Data)
+		lsInit := uni.NewSolution()
 		lsInit.Set(s)
 		lsInit.SetLower(0, r.Obj, gLin)
 		lsRes := sol.ls.OptimizeFdF(lineFunc, lsInit, wolfe)
