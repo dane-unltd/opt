@@ -8,6 +8,10 @@ type SearchDirectioner interface {
 	SearchDirection(s *Solution, d []float64)
 }
 
+type LineSearcher interface {
+	Search(obj FdF, sol *Solution, dir []float64, step float64) float64
+}
+
 type SearchBased struct {
 	LastDir []float64
 

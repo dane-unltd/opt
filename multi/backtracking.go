@@ -6,10 +6,6 @@ import (
 	"math"
 )
 
-type LineSearcher interface {
-	Search(obj FdF, sol *Solution, dir []float64, step float64) float64
-}
-
 type Backtracking struct {
 	Armijo float64
 	xtmp   []float64
