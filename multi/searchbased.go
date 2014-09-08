@@ -12,9 +12,10 @@ type SearchDirectioner interface {
 }
 
 type SearchBased struct {
-	sd SearchDirectioner
-	ls uni.FdFOptimizer
+	LastDir []float64
 
+	sd    SearchDirectioner
+	ls    uni.FdFOptimizer
 	stats Stats
 }
 
@@ -34,6 +35,10 @@ func (sb *SearchBased) Optimize(o FdF, sol *Solution, upd ...Updater) Status {
 	obj := Wrapper{Stats: &sb.stats, Func: o}
 	sol.check(obj)
 
+	if sb.LastDir == nil {
+		sb.LastDir = make([]float64, len(sol.X))
+	}
+
 	if len(upd) == 0 {
 		upd = append(upd, GradConv{1e-6})
 	}
@@ -44,7 +49,7 @@ func (sb *SearchBased) Optimize(o FdF, sol *Solution, upd ...Updater) Status {
 
 	x := dbw.NewVector(sol.X)
 	g := dbw.NewVector(sol.Grad)
-	d := dbw.NewVector(sol.LastDir)
+	d := dbw.NewVector(sb.LastDir)
 
 	var status Status
 	for ; status == NotTerminated; status = doUpdates(sol, &sb.stats, initialTime, upd) {

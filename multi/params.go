@@ -14,10 +14,10 @@ type Params struct {
 func NewParams() *Params {
 	return &Params{
 		Termination: Termination{
-			IterMax: 1000,
+			IterMax: 1e4,
 			TimeMax: time.Minute,
 		},
 		Accuracy:   1e-6,
-		FunEvalMax: 10000,
+		FunEvalMax: 1e5,
 	}
 }

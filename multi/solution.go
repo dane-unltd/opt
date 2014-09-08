@@ -15,10 +15,9 @@ type Stats struct {
 }
 
 type Solution struct {
-	X       []float64
-	Obj     float64
-	Grad    []float64
-	LastDir []float64
+	X    []float64
+	Obj  float64
+	Grad []float64
 }
 
 func NewSolution(x []float64) *Solution {
@@ -35,10 +34,6 @@ func (s *Solution) check(obj FdF) {
 	}
 	if math.IsNaN(s.Obj) {
 		s.Obj = obj.F(s.X)
-	}
-
-	if s.LastDir == nil {
-		s.LastDir = make([]float64, len(s.X))
 	}
 }
 
