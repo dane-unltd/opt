@@ -3,17 +3,18 @@ package multi
 import "time"
 
 type Updater interface {
-	Update(r *Result) Status
+	Update(sol *Solution, stats *Stats) Status
 }
 
-func doUpdates(r *Result, initialTime time.Time, upd []Updater) Status {
-	r.Time = time.Since(initialTime)
+func doUpdates(sol *Solution, stats *Stats, initialTime time.Time, upd []Updater) Status {
+	stats.Time = time.Since(initialTime)
+	var status Status
 	for _, u := range upd {
-		st := u.Update(r)
+		st := u.Update(sol, stats)
 		if st != 0 {
-			r.Status = st
+			status = st
 		}
 	}
-	r.Iter++
-	return r.Status
+	stats.Iter++
+	return status
 }

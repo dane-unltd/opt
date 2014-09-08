@@ -13,12 +13,12 @@ func NewDisplay(p int) *Display {
 	return &Display{Period: p}
 }
 
-func (dsp *Display) Update(r *Result) Status {
+func (dsp *Display) Update(sol *Solution, stats *Stats) Status {
 	gradNorm := nan
-	if r.Grad != nil {
-		gradNorm = dbw.Nrm2(dbw.NewVector(r.Grad))
+	if sol.Grad != nil {
+		gradNorm = dbw.Nrm2(dbw.NewVector(sol.Grad))
 	}
-	if r.Iter == 0 {
+	if stats.Iter == 0 {
 		fmt.Println("------------------------------------------------------")
 		fmt.Println("Iter     Fun. Eval.  Time    Objective   Gradient-Norm")
 		fmt.Println("------------------------------------------------------")
@@ -26,9 +26,9 @@ func (dsp *Display) Update(r *Result) Status {
 	if dsp.Period <= 0 {
 		dsp.Period = 1
 	}
-	if r.Iter%dsp.Period == 0 {
-		fmt.Printf("%6d   %6d      %3.2f    %.2E    %.2E\n", r.Iter,
-			r.FunEvals, r.Time.Seconds(), r.Obj, gradNorm)
+	if stats.Iter%dsp.Period == 0 {
+		fmt.Printf("%6d   %6d      %3.2f    %.2E    %.2E\n", stats.Iter,
+			stats.FunEvals, stats.Time.Seconds(), sol.Obj, gradNorm)
 	}
 	return 0
 }

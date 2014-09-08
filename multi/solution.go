@@ -2,37 +2,43 @@ package multi
 
 import (
 	"math"
+	"time"
 )
 
 var nan = math.NaN()
 
+type Stats struct {
+	Iter      int
+	Time      time.Duration
+	FunEvals  int
+	GradEvals int
+}
+
 type Solution struct {
-	X    []float64
-	Obj  float64
-	Grad []float64
+	X       []float64
+	Obj     float64
+	Grad    []float64
+	LastDir []float64
 }
 
 func NewSolution(x []float64) *Solution {
 	return &Solution{
-		X:    x,
-		Obj:  nan,
-		Grad: nil,
+		X:   x,
+		Obj: nan,
 	}
 }
 
-func (s *Solution) initF(obj fWrapper) {
-	if math.IsNaN(s.Obj) {
-		s.Obj = obj.F(s.X)
-	}
-}
-
-func (s *Solution) initFdF(obj fdfWrapper) {
+func (s *Solution) check(obj FdF) {
 	if s.Grad == nil {
 		s.Grad = make([]float64, len(s.X))
 		s.Obj = obj.FdF(s.X, s.Grad)
 	}
 	if math.IsNaN(s.Obj) {
 		s.Obj = obj.F(s.X)
+	}
+
+	if s.LastDir == nil {
+		s.LastDir = make([]float64, len(s.X))
 	}
 }
 

@@ -11,24 +11,24 @@ type History struct {
 	Grad [][]float64
 }
 
-func (h *History) Update(m *Result) Status {
+func (h *History) Update(sol *Solution, stats *Stats) Status {
 	if h.T != nil {
-		h.T = append(h.T, m.Time)
+		h.T = append(h.T, stats.Time)
 	}
 	if h.X != nil {
-		xt := make([]float64, len(m.X))
-		copy(xt, m.X)
+		xt := make([]float64, len(sol.X))
+		copy(xt, sol.X)
 		h.X = append(h.X, xt)
 	}
 	if h.Grad != nil {
-		if m.Grad != nil {
-			gt := make([]float64, len(m.Grad))
-			copy(gt, m.Grad)
+		if sol.Grad != nil {
+			gt := make([]float64, len(sol.Grad))
+			copy(gt, sol.Grad)
 			h.Grad = append(h.Grad, gt)
 		}
 	}
 	if h.Obj != nil {
-		h.Obj = append(h.Obj, m.Obj)
+		h.Obj = append(h.Obj, sol.Obj)
 	}
 	return NotTerminated
 }

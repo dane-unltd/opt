@@ -3,16 +3,19 @@ package multi
 import (
 	"github.com/dane-unltd/opt/uni"
 	"github.com/gonum/blas/dbw"
+
 	"time"
 )
 
 type SearchDirectioner interface {
-	SearchDirection(s Solution, d []float64)
+	SearchDirection(s *Solution, d []float64)
 }
 
 type SearchBased struct {
 	sd SearchDirectioner
 	ls uni.FdFOptimizer
+
+	stats Stats
 }
 
 func NewSearchBased(sd SearchDirectioner, ls uni.FdFOptimizer) *SearchBased {
@@ -22,10 +25,14 @@ func NewSearchBased(sd SearchDirectioner, ls uni.FdFOptimizer) *SearchBased {
 	}
 }
 
-func (sol SearchBased) OptimizeFdF(o FdF, in *Solution, upd ...Updater) *Result {
-	r := NewResult(in)
-	obj := fdfWrapper{r: r, fdf: o}
-	r.initFdF(obj)
+func (sb *SearchBased) Stats() *Stats {
+	return &sb.stats
+}
+
+func (sb *SearchBased) Optimize(o FdF, sol *Solution, upd ...Updater) Status {
+
+	obj := Wrapper{Stats: &sb.stats, Func: o}
+	sol.check(obj)
 
 	if len(upd) == 0 {
 		upd = append(upd, GradConv{1e-6})
@@ -33,43 +40,39 @@ func (sol SearchBased) OptimizeFdF(o FdF, in *Solution, upd ...Updater) *Result 
 
 	initialTime := time.Now()
 
-	n := len(r.X)
 	s := 1.0 //initial step size
 
-	x := dbw.NewVector(r.X)
-	g := dbw.NewVector(r.Grad)
-	d := dbw.NewVector(make([]float64, n))
+	x := dbw.NewVector(sol.X)
+	g := dbw.NewVector(sol.Grad)
+	d := dbw.NewVector(sol.LastDir)
 
-	sol.sd.SearchDirection(r.Solution, d.Data)
+	var status Status
+	for ; status == NotTerminated; status = doUpdates(sol, &sb.stats, initialTime, upd) {
+		sb.sd.SearchDirection(sol, d.Data)
+		gLin := dbw.Dot(g, d)
 
-	gLin := dbw.Dot(g, d)
-
-	for doUpdates(r, initialTime, upd) == 0 {
 		wolfe := uni.Wolfe{
 			Armijo:    0.2,
 			Curvature: 0.9,
 			X0:        0,
-			F0:        r.Obj,
+			F0:        sol.Obj,
 			Deriv0:    gLin,
 		}
 
-		lineFunc := NewLineFdF(obj, r.X, d.Data)
+		lineFunc := NewLineFdF(obj, sol.X, d.Data)
 		lsInit := uni.NewSolution()
 		lsInit.Set(s)
-		lsInit.SetLower(0, r.Obj, gLin)
-		lsRes := sol.ls.OptimizeFdF(lineFunc, lsInit, wolfe)
+		lsInit.SetLower(0, sol.Obj, gLin)
+		lsRes := sb.ls.OptimizeFdF(lineFunc, lsInit, wolfe)
 		if lsRes.Status < 0 {
-			r.Status = Status(lsRes.Status)
+			status = Status(lsRes.Status)
 			break
 		}
-		s, r.Obj = lsRes.X, lsRes.Obj
+		s, sol.Obj = lsRes.X, lsRes.Obj
 
 		dbw.Axpy(s, d, x)
-		obj.DF(r.X, r.Grad)
+		obj.DF(sol.X, sol.Grad)
 
-		sol.sd.SearchDirection(r.Solution, d.Data)
-
-		gLin = dbw.Dot(g, d)
 	}
-	return r
+	return status
 }

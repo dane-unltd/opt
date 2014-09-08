@@ -16,7 +16,7 @@ type LBFGS struct {
 	Mem      int
 }
 
-func (sol *LBFGS) SearchDirection(s Solution, dSl []float64) {
+func (sol *LBFGS) SearchDirection(s *Solution, dSl []float64) {
 	n := len(dSl)
 	if !sol.notFirst {
 		if sol.Mem <= 0 {

@@ -4,58 +4,10 @@ import (
 	"github.com/gonum/blas/dbw"
 )
 
-type F interface {
-	F(x []float64) float64
-}
-
 type FdF interface {
-	F
+	F(x []float64) float64
 	DF(x, g []float64)
 	FdF(x, g []float64) float64
-}
-
-type FdFddF interface {
-	FdF
-	DDF(x, h []float64)
-	FdFddF(x, g, h []float64) float64
-}
-
-type Projection interface {
-	Project(x []float64)
-}
-
-type LineF struct {
-	f           F
-	x, d, xTemp dbw.Vector
-	Dir         float64
-}
-
-func NewLineF(f F, x, d []float64) *LineF {
-	n := len(x)
-	if len(d) != n {
-		panic("dimension mismatch")
-	}
-	return &LineF{
-		f:     f,
-		x:     dbw.NewVector(x),
-		d:     dbw.NewVector(d),
-		Dir:   1,
-		xTemp: dbw.NewVector(make([]float64, n)),
-	}
-}
-
-func (lf *LineF) F(alpha float64) float64 {
-	dbw.Copy(lf.x, lf.xTemp)
-	dbw.Axpy(lf.Dir*alpha, lf.d, lf.xTemp)
-	return lf.f.F(lf.xTemp.Data)
-}
-
-func (lf *LineF) SwitchDir() {
-	if lf.Dir > 0 {
-		lf.Dir = -1
-	} else {
-		lf.Dir = 1
-	}
 }
 
 type LineFdF struct {
@@ -99,29 +51,23 @@ func (lf *LineFdF) FdF(alpha float64) (float64, float64) {
 	return val, dbw.Dot(lf.d, lf.g)
 }
 
-type LineFProj struct {
-	f           F
-	p           Projection
-	x, d, xTemp dbw.Vector
+type Wrapper struct {
+	Stats *Stats
+	Func  FdF
 }
 
-func NewLineFProj(f F, p Projection, x, d []float64) *LineFProj {
-	n := len(x)
-	if len(d) != n {
-		panic("dimension mismatch")
-	}
-	return &LineFProj{
-		f:     f,
-		p:     p,
-		x:     dbw.NewVector(x),
-		d:     dbw.NewVector(d),
-		xTemp: dbw.NewVector(make([]float64, n)),
-	}
+func (w Wrapper) F(x []float64) float64 {
+	w.Stats.FunEvals++
+	return w.Func.F(x)
 }
 
-func (lf *LineFProj) F(alpha float64) float64 {
-	dbw.Copy(lf.x, lf.xTemp)
-	dbw.Axpy(alpha, lf.d, lf.xTemp)
-	lf.p.Project(lf.xTemp.Data)
-	return lf.f.F(lf.xTemp.Data)
+func (w Wrapper) DF(x, g []float64) {
+	w.Stats.GradEvals++
+	w.Func.DF(x, g)
+}
+
+func (w Wrapper) FdF(x, g []float64) float64 {
+	w.Stats.FunEvals++
+	w.Stats.GradEvals++
+	return w.Func.FdF(x, g)
 }
