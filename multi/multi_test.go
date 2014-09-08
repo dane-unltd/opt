@@ -86,7 +86,7 @@ func TestQuadratic(t *testing.T) {
 	//Steepest descent with Backtracking
 	sol := NewSolution(make([]float64, n))
 	stDesc := NewSearchBased(SteepestDescent{}, uni.NewBacktracking())
-	status := stDesc.Optimize(obj, sol, GradConv{1e-6}, NewDisplay(100000))
+	status := stDesc.Optimize(obj, sol, GradConv{1e-6}, NewDisplay(50))
 
 	t.Log(sol.Obj, stDesc.stats.FunEvals, stDesc.stats.GradEvals, status)
 	if math.Abs(sol.Obj) > 0.01 {
@@ -96,7 +96,7 @@ func TestQuadratic(t *testing.T) {
 	//Steepest descent with Cubic
 	sol = NewSolution(make([]float64, n))
 	stDesc = NewSearchBased(SteepestDescent{}, uni.NewCubic())
-	status = stDesc.Optimize(obj, sol, GradConv{1e-6}, NewDisplay(100000))
+	status = stDesc.Optimize(obj, sol, GradConv{1e-6}, NewDisplay(50))
 
 	t.Log(sol.Obj, stDesc.stats.FunEvals, stDesc.stats.GradEvals, status)
 	if math.Abs(sol.Obj) > 0.01 {
@@ -108,7 +108,7 @@ func TestQuadratic(t *testing.T) {
 	lbfgs := NewSearchBased(new(LBFGS), uni.NewCubic())
 	status = lbfgs.Optimize(obj, sol, GradConv{1e-6}, NewDisplay(1))
 
-	t.Log(sol.Obj, stDesc.stats.FunEvals, stDesc.stats.GradEvals, status)
+	t.Log(sol.Obj, lbfgs.stats.FunEvals, lbfgs.stats.GradEvals, status)
 	if math.Abs(sol.Obj) > 0.01 {
 		t.Fail()
 	}
@@ -118,10 +118,16 @@ func TestQuadratic(t *testing.T) {
 	lbfgs = NewSearchBased(new(LBFGS), uni.NewBacktracking())
 	status = lbfgs.Optimize(obj, sol, GradConv{1e-6}, NewDisplay(10))
 
-	t.Log(sol.Obj, stDesc.stats.FunEvals, stDesc.stats.GradEvals, status)
+	t.Log(sol.Obj, lbfgs.stats.FunEvals, lbfgs.stats.GradEvals, status)
 	if math.Abs(sol.Obj) > 0.01 {
 		t.Fail()
 	}
+}
+
+func copyOf(x []float64) []float64 {
+	r := make([]float64, len(x))
+	copy(r, x)
+	return r
 }
 
 func TestRosenbrock(t *testing.T) {
@@ -139,9 +145,9 @@ func TestRosenbrock(t *testing.T) {
 	obj := opt.Rosenbrock{}
 
 	//Steepest descent with Backtracking
-	sol := NewSolution(xInit)
+	sol := NewSolution(copyOf(xInit))
 	stDesc := NewSearchBased(SteepestDescent{}, uni.NewBacktracking())
-	status := stDesc.Optimize(obj, sol, GradConv{1e-6}, NewDisplay(100000))
+	status := stDesc.Optimize(obj, sol, GradConv{1e-6}, NewDisplay(5000))
 
 	t.Log(sol.Obj, stDesc.stats.FunEvals, stDesc.stats.GradEvals, status)
 	if math.Abs(sol.Obj) > 0.01 {
@@ -149,9 +155,9 @@ func TestRosenbrock(t *testing.T) {
 	}
 
 	//Steepest descent with Cubic
-	sol = NewSolution(xInit)
+	sol = NewSolution(copyOf(xInit))
 	stDesc = NewSearchBased(SteepestDescent{}, uni.NewCubic())
-	status = stDesc.Optimize(obj, sol, GradConv{1e-6}, NewDisplay(100000))
+	status = stDesc.Optimize(obj, sol, GradConv{1e-6}, NewDisplay(5000))
 
 	t.Log(sol.Obj, stDesc.stats.FunEvals, stDesc.stats.GradEvals, status)
 	if math.Abs(sol.Obj) > 0.01 {
@@ -159,21 +165,21 @@ func TestRosenbrock(t *testing.T) {
 	}
 
 	//LBFGS with Cubic
-	sol = NewSolution(xInit)
+	sol = NewSolution(copyOf(xInit))
 	lbfgs := NewSearchBased(new(LBFGS), uni.NewCubic())
-	status = lbfgs.Optimize(obj, sol, GradConv{1e-6}, NewDisplay(1))
+	status = lbfgs.Optimize(obj, sol, GradConv{1e-6}, NewDisplay(10))
 
-	t.Log(sol.Obj, stDesc.stats.FunEvals, stDesc.stats.GradEvals, status)
+	t.Log(sol.Obj, lbfgs.stats.FunEvals, lbfgs.stats.GradEvals, status)
 	if math.Abs(sol.Obj) > 0.01 {
 		t.Fail()
 	}
 
 	//LBFGS with Backtracking
-	sol = NewSolution(xInit)
+	sol = NewSolution(copyOf(xInit))
 	lbfgs = NewSearchBased(new(LBFGS), uni.NewBacktracking())
 	status = lbfgs.Optimize(obj, sol, GradConv{1e-6}, NewDisplay(10))
 
-	t.Log(sol.Obj, stDesc.stats.FunEvals, stDesc.stats.GradEvals, status)
+	t.Log(sol.Obj, lbfgs.stats.FunEvals, lbfgs.stats.GradEvals, status)
 	if math.Abs(sol.Obj) > 0.01 {
 		t.Fail()
 	}

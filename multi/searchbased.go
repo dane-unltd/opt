@@ -48,6 +48,9 @@ func (sb *SearchBased) Optimize(o FdF, sol *Solution, upd ...Updater) Status {
 
 	var status Status
 	for ; status == NotTerminated; status = doUpdates(sol, &sb.stats, initialTime, upd) {
+
+		s = 1.0
+
 		sb.sd.SearchDirection(sol, d.Data)
 		gLin := dbw.Dot(g, d)
 
