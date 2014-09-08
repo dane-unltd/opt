@@ -1,8 +1,6 @@
 package multi
 
-import (
-	"github.com/dane-unltd/opt/uni"
-)
+import ()
 
 type Solver interface {
 	Stats() *Stats
@@ -14,7 +12,7 @@ type Optimizer interface {
 
 //Solve a problem using a gradient based method
 func Optimize(obj FdF, in *Solution, p *Params, u ...Updater) (Status, Solver) {
-	solver := NewSearchBased(new(LBFGS), uni.NewCubic())
+	solver := NewSearchBased(new(LBFGS), Backtracking{Armijo: 0.2})
 	if p != nil {
 		u = append(u, GradConv{p.Accuracy})
 		u = append(u, p.Termination)

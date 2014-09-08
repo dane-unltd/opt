@@ -1,9 +1,6 @@
 package multi
 
 import (
-	"github.com/dane-unltd/opt/uni"
-	"github.com/gonum/blas/dbw"
-
 	"time"
 )
 
@@ -15,11 +12,11 @@ type SearchBased struct {
 	LastDir []float64
 
 	sd    SearchDirectioner
-	ls    uni.FdFOptimizer
+	ls    LineSearcher
 	stats Stats
 }
 
-func NewSearchBased(sd SearchDirectioner, ls uni.FdFOptimizer) *SearchBased {
+func NewSearchBased(sd SearchDirectioner, ls LineSearcher) *SearchBased {
 	return &SearchBased{
 		sd: sd,
 		ls: ls,
@@ -47,40 +44,12 @@ func (sb *SearchBased) Optimize(o FdF, sol *Solution, upd ...Updater) Status {
 
 	s := 1.0 //initial step size
 
-	x := dbw.NewVector(sol.X)
-	g := dbw.NewVector(sol.Grad)
-	d := dbw.NewVector(sb.LastDir)
-
 	var status Status
 	for ; status == NotTerminated; status = doUpdates(sol, &sb.stats, initialTime, upd) {
-
 		s = 1.0
 
-		sb.sd.SearchDirection(sol, d.Data)
-		gLin := dbw.Dot(g, d)
-
-		wolfe := uni.Wolfe{
-			Armijo:    0.2,
-			Curvature: 0.9,
-			X0:        0,
-			F0:        sol.Obj,
-			Deriv0:    gLin,
-		}
-
-		lineFunc := NewLineFdF(obj, sol.X, d.Data)
-		lsInit := uni.NewSolution()
-		lsInit.Set(s)
-		lsInit.SetLower(0, sol.Obj, gLin)
-		lsRes := sb.ls.OptimizeFdF(lineFunc, lsInit, wolfe)
-		if lsRes.Status < 0 {
-			status = Status(lsRes.Status)
-			break
-		}
-		s, sol.Obj = lsRes.X, lsRes.Obj
-
-		dbw.Axpy(s, d, x)
-		obj.DF(sol.X, sol.Grad)
-
+		sb.ls.Search(obj, sol, sb.LastDir, s)
+		sb.sd.SearchDirection(sol, sb.LastDir)
 	}
 	return status
 }
